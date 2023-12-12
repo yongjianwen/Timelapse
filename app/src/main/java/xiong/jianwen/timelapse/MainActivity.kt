@@ -1,6 +1,9 @@
 package xiong.jianwen.timelapse
 
+import android.app.ActivityManager
 import android.content.ContentValues
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.MediaStore
@@ -15,6 +18,11 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import xiong.jianwen.timelapse.databinding.ActivityMainBinding
+import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Date
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -57,6 +65,47 @@ class MainActivity : AppCompatActivity() {
         viewBinding.buttonCapture.setOnClickListener { takePhoto() }
 
         cameraExecutor = Executors.newSingleThreadExecutor()
+
+        // Test foreground service
+        /* Test results:
+           In a span of 10 hours, and set to be running every 10 seconds, number of times
+           service got triggered = 1,166 out of 3,600 (expected)
+           => 32% success rate
+           Observed that almost stagnant overnight
+        */
+        /*if (!foregroundServiceRunning()) {
+            Log.d(TAG, "Running service now")
+            val serviceIntent = Intent(this, ForegroundService::class.java)
+            startForegroundService(serviceIntent)
+        }*/
+
+        // Test foreground service with battery optimization off
+        /* Test results:
+           In a span of 3 hours, and set to be running every 10 seconds, number of times
+           service got triggered = 550 out of 1,080 (expected)
+           => 51% success rate
+           In a span of 4 days, 2 hours and 12 minutes, and set to be running every 10 seconds, number of times
+           service got triggered = 19,389 out of 35,353 (expected)
+           => 55% success rate
+        */
+
+        // Temporarily use foreground service to capture long timelapse, but need to keep device charging
+        if (!foregroundServiceRunning()) {
+            Log.d(TAG, "Running service now")
+            val serviceIntent = Intent(this, ForegroundService::class.java)
+            startForegroundService(serviceIntent)
+        }
+    }
+
+    // Test foreground service
+    private fun foregroundServiceRunning(): Boolean {
+        val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        for (service in activityManager.getRunningServices(Int.MAX_VALUE)) {
+            if (ForegroundService::class.java.name.equals(service.service.className)) {
+                return true
+            }
+        }
+        return false
     }
 
     override fun onDestroy() {
@@ -92,13 +141,15 @@ class MainActivity : AppCompatActivity() {
         }, ContextCompat.getMainExecutor(this))
     }
 
-    private fun takePhoto() {
+    public fun takePhoto() {
         // Get a stable reference of the modifiable image capture use case
         // This will be null if photo button is clicked before image capture is set up
         val imageCapture = imageCapture ?: return
 
         // Create file name and MediaStore entry
-        val name = "hello"
+        val dateFormat = SimpleDateFormat("yyyyMMdd_HHmmss")
+        val dateStr = dateFormat.format(Date())
+        val name = "IMG_$dateStr"
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, name)
             put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
