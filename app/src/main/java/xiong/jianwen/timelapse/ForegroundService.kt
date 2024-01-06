@@ -1,86 +1,100 @@
 package xiong.jianwen.timelapse
 
 import android.annotation.SuppressLint
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.Service
 import android.content.ContentValues
+import android.content.Context
 import android.content.Intent
-import android.os.IBinder
+import android.os.PowerManager
 import android.provider.MediaStore
 import android.util.Log
 import android.widget.Toast
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
-import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleService
 import xiong.jianwen.timelapse.databinding.ActivityMainBinding
+import xiong.jianwen.timelapse.utils.Constants
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
+import kotlin.math.roundToInt
 
 class ForegroundService : LifecycleService() {
 
+    private lateinit var wakeLock: PowerManager.WakeLock
+
+    companion object {
+        private const val TAG = "ForegroundService"
+    }
+
     @SuppressLint("NotificationPermission")
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-//        viewBinding = ActivityMainBinding.inflate(layoutInflater)
-        cameraExecutor = Executors.newSingleThreadExecutor()
+        /*// viewBinding = ActivityMainBinding.inflate(layoutInflater)
+        cameraExecutor = Executors.newSingleThreadExecutor()*/
+        wakeLock = (getSystemService(Context.POWER_SERVICE) as PowerManager).run {
+            newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MyApp::MyWakelockTag").apply {
+                acquire(1 * 24 * 60 * 60 * 1000L)    // 1 day
+            }
+        }
 
-        Log.d("MainActivity", "onStartCommand")
-        val time = Date()
-        val timeStr = Date().toString()
-        var runCount = 1
-        val gapInSeconds = 30L
-        var prevTimeStr = Date().toString()
+        val intervalInSeconds = 5L
+        val startTime = System.currentTimeMillis()
+        var runCount = 0
 
-        val CHANNEL_ID = "Test Foreground Service ID"
-        val notificationChannel =
-            NotificationChannel(CHANNEL_ID, CHANNEL_ID, NotificationManager.IMPORTANCE_DEFAULT)
+        val title = "Capturing Timelapse"
+        var msg = "Starting to capture"
+        val builder = NotificationService.buildTestNotification(this, title, msg, msg)
+        val prevTime = 0L
 
-        getSystemService(NotificationManager::class.java).createNotificationChannel(
-            notificationChannel
-        )
-        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-        val notification =
-            builder.setContentText("Capturing $runCount/1\nLast Captured: $prevTimeStr\nStart Time: $timeStr")
-                .setContentTitle("Capturing Timelapse").setSmallIcon(
-                    R.drawable.ic_launcher_background
-                )
-
-        startForeground(1001, notification.build())
+        startForeground(1001, builder.build())
 
         Thread {
-            Thread.sleep(1000 * gapInSeconds)
-
             try {
                 while (true) {
-                    val now = Date()
-                    val durationInSeconds = TimeUnit.MILLISECONDS.toSeconds(now.time - time.time)
-                    val expectedRunCount = (durationInSeconds / gapInSeconds).toInt() - 1
-                    val msg =
-                        "Capturing $runCount/$expectedRunCount\nLast Captured: $prevTimeStr\nStart Time: $timeStr"
-                    builder.setContentText(msg)
-                        .setStyle(NotificationCompat.BigTextStyle().bigText(msg))
+                    ++runCount
+                    val nowTime = System.currentTimeMillis()
+                    val expectedCount = ((nowTime - startTime) / 5000).toInt() + 1
+                    val successRate =
+                        (runCount * 100.0 / expectedCount * 100.0).roundToInt() / 100.0
+                    val successRateStr = String.format("%.2f", successRate)
+                    val missingCount = expectedCount - runCount
 
-                    val notificationManager: NotificationManager =
-                        getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-                    notificationManager.notify(1001, builder.build())
+                    val shortMsg =
+                        "Capturing $runCount/$expectedCount - $successRateStr% (missing $missingCount)"
+                    msg = "$shortMsg\nStarted from $startTime"
+                    NotificationService.triggerTestNotification(builder, this, title, shortMsg, msg)
 
-                    prevTimeStr = now.toString()
-                    runCount += 1
+                    if (!Constants.testNotiOnly) {
+                        startCamera()
+                    }
 
-                    startCamera()
+                    // Test delivery methods: Queued delivery vs Timed delivery
+                    /* Test results:
+                       Queued delivery enqueues the next trigger after the last successful trigger by
+                       the specified interval, causing delays to accumulate and eventually falling
+                       short of the total expected trigger count.
+                       Timed delivery enqueues the next trigger after the last successful trigger by
+                       a flexible interval, which is calculated by finding the difference between the
+                       next expected trigger time and the current time, to offset the delays caused by
+                       the process itself.
+                    */
 
-                    Thread.sleep(1000 * gapInSeconds)
+                    // Queued delivery
+                    /*Thread.sleep(1000 * intervalInSeconds)*/
+
+                    // Timed delivery
+                    var nextTrigger = startTime + runCount * 1000 * intervalInSeconds
+                    if (nextTrigger <= System.currentTimeMillis()) {
+                        while (nextTrigger <= System.currentTimeMillis()) {
+                            nextTrigger += runCount * 1000 * intervalInSeconds
+                        }
+                    }
+                    Thread.sleep(nextTrigger - System.currentTimeMillis())
                 }
             } catch (e: InterruptedException) {
-                Log.d("test: ", "interrupted")
+                Log.e(TAG, e.stackTrace.toString())
             }
         }.start()
 
@@ -88,14 +102,18 @@ class ForegroundService : LifecycleService() {
     }
 
     override fun onDestroy() {
+        // Original
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
+
+        wakeLock.release()
+
+        // Test restart service
+        /*val serviceIntent = Intent(this.applicationContext, ForegroundService::class.java)
+        startForegroundService(serviceIntent)*/
+
         super.onDestroy()
     }
-
-//    override fun onBind(p0: Intent?): IBinder? {
-//        return null
-//    }
 
     private lateinit var viewBinding: ActivityMainBinding
     private lateinit var cameraExecutor: ExecutorService
@@ -171,6 +189,5 @@ class ForegroundService : LifecycleService() {
                     cameraExecutor.shutdown()
                 }
             })
-
     }
 }
