@@ -1,10 +1,11 @@
-package xiong.jianwen.timelapse
+package xiong.jianwen.timelapse.services
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import androidx.core.app.NotificationCompat
+import xiong.jianwen.timelapse.R
 
 class NotificationService {
 

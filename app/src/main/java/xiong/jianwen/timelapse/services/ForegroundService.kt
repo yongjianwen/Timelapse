@@ -1,9 +1,10 @@
-package xiong.jianwen.timelapse
+package xiong.jianwen.timelapse.services
 
 import android.annotation.SuppressLint
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
+import android.media.MediaPlayer
 import android.os.PowerManager
 import android.provider.MediaStore
 import android.util.Log
@@ -14,6 +15,7 @@ import androidx.camera.core.ImageCaptureException
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleService
+import xiong.jianwen.timelapse.R
 import xiong.jianwen.timelapse.databinding.ActivityMainBinding
 import xiong.jianwen.timelapse.utils.Constants
 import java.text.SimpleDateFormat
@@ -35,7 +37,7 @@ class ForegroundService : LifecycleService() {
         cameraExecutor = Executors.newSingleThreadExecutor()*/
         wakeLock = (getSystemService(Context.POWER_SERVICE) as PowerManager).run {
             newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MyApp::MyWakelockTag").apply {
-                acquire(1 * 24 * 60 * 60 * 1000L)    // 1 day
+                acquire(Constants.wakeLockTimeout)
             }
         }
 
@@ -46,7 +48,6 @@ class ForegroundService : LifecycleService() {
         val title = "Capturing Timelapse"
         var msg = "Starting to capture"
         val builder = NotificationService.buildTestNotification(this, title, msg, msg)
-        val prevTime = 0L
 
         startForeground(1001, builder.build())
 
@@ -69,6 +70,9 @@ class ForegroundService : LifecycleService() {
                     if (!Constants.testNotiOnly) {
                         startCamera()
                     }
+
+                    /*val mediaPlayer = MediaPlayer.create(this, R.raw.camera)
+                    mediaPlayer.start()*/
 
                     // Test delivery methods: Queued delivery vs Timed delivery
                     /* Test results:
@@ -94,7 +98,7 @@ class ForegroundService : LifecycleService() {
                     Thread.sleep(nextTrigger - System.currentTimeMillis())
                 }
             } catch (e: InterruptedException) {
-                Log.e(TAG, e.stackTrace.toString())
+                e.printStackTrace()
             }
         }.start()
 
@@ -145,7 +149,7 @@ class ForegroundService : LifecycleService() {
 //                cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
                 takePhoto()
             } catch (e: Exception) {
-                Log.e("ForegroundService", "Use case binding failed", e)
+                e.printStackTrace()
             }
         }, ContextCompat.getMainExecutor(this))
     }

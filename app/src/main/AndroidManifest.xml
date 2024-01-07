@@ -31,9 +31,7 @@
             </intent-filter>
         </activity>
 
-        <service android:name=".ForegroundService" />
-
-        <!--<receiver android:name=".MyBroadcastReceiver" />-->
+        <service android:name=".services.ForegroundService" />
     </application>
 
 </manifest>
