@@ -9,12 +9,13 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
+import android.view.View
 import android.view.animation.AlphaAnimation
 import android.view.animation.Animation
 import android.view.animation.AnimationSet
-import android.view.animation.BounceInterpolator
+import android.view.animation.DecelerateInterpolator
 import android.view.animation.ScaleAnimation
-import android.view.animation.TranslateAnimation
+import android.widget.SeekBar
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -24,25 +25,39 @@ import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import xiong.jianwen.timelapse.databinding.ActivityMainBinding
 import xiong.jianwen.timelapse.services.ForegroundService
+import xiong.jianwen.timelapse.utils.Constants
+import xiong.jianwen.timelapse.utils.UserPreferences
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import kotlin.coroutines.CoroutineContext
 
+class MainActivity : AppCompatActivity(), CoroutineScope {
 
-class MainActivity : AppCompatActivity() {
+    private var job: Job = Job()
+
+    override val coroutineContext: CoroutineContext
+        get() = Dispatchers.Main + job
 
     // align to minute
     // interval
     // duration
+    // presets
     // extend manually
     // preview past captures
     // gen video
     // toggle preview
     // toggle sound
-    // subfolder naming
+    // subfolder/image file prefix naming
     // change camera selection
     // blur view - not to be implemented for now
 
@@ -53,6 +68,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var viewBinding: ActivityMainBinding
     private lateinit var cameraExecutor: ExecutorService
     private var imageCapture: ImageCapture? = null
+    private lateinit var cameraProvider: ProcessCameraProvider
+
+    private lateinit var userPreferences: UserPreferences
 
     private val activityResultLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
@@ -96,7 +114,8 @@ class MainActivity : AppCompatActivity() {
         // Using foreground service to achieve repeating and timely triggers
         if (!foregroundServiceRunning()) {
             val serviceIntent = Intent(this, ForegroundService::class.java)
-            // startForegroundService(serviceIntent)
+            serviceIntent.putExtra("interval", 123)
+            startForegroundService(serviceIntent)
         }
 
         /* Compromises to be made if AlarmManager is to be used:
@@ -106,70 +125,22 @@ class MainActivity : AppCompatActivity() {
         */
 
         viewBinding.buttonSettings.setOnClickListener {
-//            if (viewBinding.testView.isVisible) viewBinding.testView.visibility = View.GONE
-//            else viewBinding.testView.visibility = View.VISIBLE
-            val originalHeight = viewBinding.testView.measuredHeight
-            /*Toast.makeText(
-                applicationContext,
-                "originalHeight: " + originalHeight,
-                Toast.LENGTH_LONG
-            ).show()*/
-
             // Height animation
             /*val anim: ValueAnimator// = ValueAnimator.ofInt(originalHeight, 0)
-            if (viewBinding.testView.measuredHeight == 0) {
+            if (viewBinding.layoutSettings.measuredHeight == 0) {
                 anim = ValueAnimator.ofInt(0, 875)
             } else {
                 anim = ValueAnimator.ofInt(875, 0)
             }
             anim.addUpdateListener { valueAnimator ->
                 val value = valueAnimator.animatedValue as Int
-                val layoutParams: ViewGroup.LayoutParams = viewBinding.testView.layoutParams
+                val layoutParams: ViewGroup.LayoutParams = viewBinding.layoutSettings.layoutParams
                 layoutParams.height = value
-                viewBinding.testView.layoutParams = layoutParams
+                viewBinding.layoutSettings.layoutParams = layoutParams
             }
             anim.duration = 1000
             anim.interpolator = DecelerateInterpolator()
             anim.start()*/
-
-            // Scale animation
-            val anim: Animation = ScaleAnimation(
-                1f, 0.1f,  // Start and end values for the X axis scaling
-                1f, 0.1f,  // Start and end values for the Y axis scaling
-                Animation.RELATIVE_TO_SELF, 0.7f,  // Pivot point of X scaling
-                Animation.RELATIVE_TO_SELF, 0.3f
-            ) // Pivot point of Y scaling
-
-            anim.fillAfter = true // Needed to keep the result of the animation
-            anim.interpolator = BounceInterpolator()
-            anim.duration = 1000
-//            viewBinding.blurView.startAnimation(anim)
-//            viewBinding.blurView.requestLayout()
-//            viewBinding.blurView.scaleX = 0.6f
-//            viewBinding.blurView.scaleY = 0.6f
-
-            val anim2 = AlphaAnimation(1f, 0f)
-            anim2.fillAfter = true
-            anim2.duration = 1000
-//            viewBinding.testView.startAnimation(anim2)
-
-            val anim3 = TranslateAnimation(0f, 500f, 0f, 0f)
-            anim3.fillAfter = true
-            anim3.duration = 1000
-//            viewBinding.testView.startAnimation(anim3)
-
-            val animationSet = AnimationSet(false)
-            animationSet.addAnimation(anim)
-            animationSet.addAnimation(anim2)
-//            viewBinding.testView.startAnimation(animationSet)
-
-//            viewBinding.testView.visibility = View.GONE
-
-//            viewBinding.testView.scaleX = 0.7f
-//            viewBinding.testView.scaleY = 0.7f
-//            viewBinding.previewViewCamera.scaleX = 0.3f
-//            viewBinding.previewViewCamera.scaleY = 0.3f
-//            viewBinding.blurView.visibility = View.GONE
 
             /*val pvhX = PropertyValuesHolder.ofFloat(View.SCALE_X, 1f, 0.5f)
             val pvhY = PropertyValuesHolder.ofFloat(View.SCALE_Y, 1f, 0.9f)
@@ -179,6 +150,141 @@ class MainActivity : AppCompatActivity() {
             val setAnimation = AnimatorSet()
             setAnimation.play(scaleAnimation)
             setAnimation.start()*/
+
+            // Visibility
+            /*if (viewBinding.layoutSettings.isVisible) viewBinding.layoutSettings.visibility = View.GONE
+            else viewBinding.layoutSettings.visibility = View.VISIBLE*/
+
+            // Animation
+            if (viewBinding.layoutSettings.isVisible) {
+                val scaleAnimation = ScaleAnimation(
+                    1f, 0.1f,   // Start and end values for the X axis scaling
+                    1f, 0.1f,   // Start and end values for the Y axis scaling
+                    Animation.RELATIVE_TO_SELF, 0.9f,   // Pivot point of X scaling
+                    Animation.RELATIVE_TO_SELF, 1.1f    // Pivot point of Y scaling
+                )
+                scaleAnimation.fillAfter = true // Needed to keep the result of the animation
+                scaleAnimation.interpolator = DecelerateInterpolator()
+                scaleAnimation.duration = 350
+
+                val alphaAnimation = AlphaAnimation(1f, 0f)
+                alphaAnimation.fillAfter = true
+                alphaAnimation.duration = 350
+
+                val animationSet = AnimationSet(true)
+                animationSet.addAnimation(scaleAnimation)
+                animationSet.addAnimation(alphaAnimation)
+                viewBinding.layoutSettings.startAnimation(animationSet)
+                viewBinding.layoutSettings.visibility = View.GONE
+            } else {
+                val scaleAnimation = ScaleAnimation(
+                    0f, 1f,   // Start and end values for the X axis scaling
+                    0f, 1f,   // Start and end values for the Y axis scaling
+                    Animation.RELATIVE_TO_SELF, 0.9f,   // Pivot point of X scaling
+                    Animation.RELATIVE_TO_SELF, 1.1f    // Pivot point of Y scaling
+                )
+                scaleAnimation.fillAfter = true // Needed to keep the result of the animation
+                scaleAnimation.interpolator = DecelerateInterpolator()
+                scaleAnimation.duration = 350
+
+                val alphaAnimation = AlphaAnimation(0f, 1f)
+                alphaAnimation.fillAfter = true
+                alphaAnimation.duration = 350
+
+                val animationSet = AnimationSet(true)
+                animationSet.addAnimation(scaleAnimation)
+                animationSet.addAnimation(alphaAnimation)
+                viewBinding.layoutSettings.startAnimation(animationSet)
+                viewBinding.layoutSettings.visibility = View.VISIBLE
+            }
+        }
+
+        viewBinding.seekBarInterval.setOnSeekBarChangeListener(object :
+            SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(p0: SeekBar?, p1: Int, p2: Boolean) {
+                viewBinding.textViewInterval.text = p1.toString()
+                lifecycleScope.launch {
+                    var duration = 0
+                    lifecycleScope.launch {
+                        userPreferences.durationFlow.collect {
+                            duration = it
+                        }
+                    }
+                    var isMuted = true
+                    lifecycleScope.launch {
+                        userPreferences.isMutedFlow.collect {
+                            isMuted = it
+                        }
+                    }
+                    userPreferences.saveUserPreferences(p1, duration, isMuted)
+                }
+            }
+
+            override fun onStartTrackingTouch(p0: SeekBar?) {}
+
+            override fun onStopTrackingTouch(p0: SeekBar?) {}
+        })
+
+        viewBinding.seekBarDuration.setOnSeekBarChangeListener(object :
+            SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(p0: SeekBar?, p1: Int, p2: Boolean) {
+                viewBinding.textViewDuration.text = p1.toString()
+                lifecycleScope.launch {
+                    var interval = 0
+                    lifecycleScope.launch {
+                        userPreferences.intervalFlow.collect {
+                            interval = it
+                        }
+                    }
+                    var isMuted = true
+                    lifecycleScope.launch {
+                        userPreferences.isMutedFlow.collect {
+                            isMuted = it
+                        }
+                    }
+                    userPreferences.saveUserPreferences(interval, p1, isMuted)
+                }
+            }
+
+            override fun onStartTrackingTouch(p0: SeekBar?) {}
+
+            override fun onStopTrackingTouch(p0: SeekBar?) {}
+        })
+
+        viewBinding.switchPreview.setOnCheckedChangeListener { _, isChecked ->
+            /*Toast.makeText(
+                applicationContext,
+                isChecked.toString(),
+                Toast.LENGTH_SHORT
+            ).show()*/
+
+            if (isChecked) {
+                cameraProvider.bindToLifecycle(
+                    this,
+                    CameraSelector.DEFAULT_BACK_CAMERA,
+                    Preview.Builder().build()
+                        .also { it.setSurfaceProvider(viewBinding.previewViewCamera.surfaceProvider) },
+                    imageCapture
+                )
+            } else {
+                cameraProvider.unbindAll()
+            }
+        }
+
+        viewBinding.switchSound.setOnCheckedChangeListener { _, isChecked ->
+            lifecycleScope.launch { userPreferences.saveIsMuted(!isChecked) }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        userPreferences = UserPreferences(this)
+        lifecycleScope.launch {
+            userPreferences.saveUserPreferences(
+                Constants.DEFAULT_INTERVAL,
+                Constants.DEFAULT_DURATION,
+                Constants.DEFAULT_IS_MUTED
+            )
         }
     }
 
@@ -202,7 +308,8 @@ class MainActivity : AppCompatActivity() {
 
         cameraProviderFuture.addListener({
             // Used to bind the lifecycle of cameras to the lifecycle owner
-            val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
+            // val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
+            cameraProvider = cameraProviderFuture.get()
 
             // Preview
             val preview = Preview.Builder().build()
@@ -217,8 +324,14 @@ class MainActivity : AppCompatActivity() {
                 // Unbind use cases before rebinding
                 cameraProvider.unbindAll()
 
+                // switch
+                viewBinding.switchPreview.isChecked = false
+
                 // Bind use cases to camera
                 cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
+
+                // switch
+                viewBinding.switchPreview.isChecked = true
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -238,6 +351,25 @@ class MainActivity : AppCompatActivity() {
 //        )
 
         // startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+
+        // var age by rememberSaveable { mutableStateOf("") }
+//        Toast.makeText(this, userInfo.userAgeFlow.collectAsState(0).value.toString(), Toast.LENGTH_LONG).show()
+//        return
+
+        /*var age = 0
+        var myName = ""
+        lifecycleScope.launch {
+            userPreferences.userAgeFlow.collect {
+                age = it
+            }
+        }
+        lifecycleScope.launch {
+            userPreferences.userNameFlow.collect {
+                myName = it
+            }
+        }*/
+//        Toast.makeText(applicationContext, "$age, $myName", Toast.LENGTH_LONG).show()
+        return
 
         // Get a stable reference of the modifiable image capture use case
         // This will be null if photo button is clicked before image capture is set up
@@ -276,6 +408,12 @@ class MainActivity : AppCompatActivity() {
                     Log.e(TAG, "Photo capture failed: ${exception.message}", exception)
                 }
             })
+    }
+
+    fun showToast(toast: String?) {
+        runOnUiThread {
+            Toast.makeText(applicationContext(), toast, Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {

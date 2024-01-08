@@ -4,10 +4,10 @@ import android.annotation.SuppressLint
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
-import android.media.MediaPlayer
+import android.os.Handler
+import android.os.Looper
 import android.os.PowerManager
 import android.provider.MediaStore
-import android.util.Log
 import android.widget.Toast
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
@@ -15,15 +15,27 @@ import androidx.camera.core.ImageCaptureException
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleService
-import xiong.jianwen.timelapse.R
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import xiong.jianwen.timelapse.utils.UserPreferences
 import xiong.jianwen.timelapse.databinding.ActivityMainBinding
 import xiong.jianwen.timelapse.utils.Constants
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.concurrent.ExecutorService
+import kotlin.coroutines.CoroutineContext
 import kotlin.math.roundToInt
 
-class ForegroundService : LifecycleService() {
+
+class ForegroundService : LifecycleService(), CoroutineScope {
+
+    private var job: Job = Job()
+
+    override val coroutineContext: CoroutineContext
+        get() = Dispatchers.Main + job
 
     private lateinit var wakeLock: PowerManager.WakeLock
 
@@ -33,11 +45,35 @@ class ForegroundService : LifecycleService() {
 
     @SuppressLint("NotificationPermission")
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // val interval = intent!!.getIntExtra("interval", -1)
+        // Toast.makeText(applicationContext, interval.toString(), Toast.LENGTH_SHORT).show()
+
+        val userPreferences = UserPreferences(this)
+        var interval = 0
+        var duration = 0
+        var isMuted = true
+        lifecycleScope.launch {
+            userPreferences.intervalFlow.collect {
+                interval = it
+            }
+        }
+        lifecycleScope.launch {
+            userPreferences.durationFlow.collect {
+                duration = it
+            }
+        }
+        lifecycleScope.launch {
+            userPreferences.isMutedFlow.collect {
+                isMuted = it
+            }
+        }
+//        Toast.makeText(applicationContext, "$age, $myName", Toast.LENGTH_LONG).show()
+
         /*// viewBinding = ActivityMainBinding.inflate(layoutInflater)
         cameraExecutor = Executors.newSingleThreadExecutor()*/
         wakeLock = (getSystemService(Context.POWER_SERVICE) as PowerManager).run {
             newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MyApp::MyWakelockTag").apply {
-                acquire(Constants.wakeLockTimeout)
+                acquire(Constants.WAKE_LOCK_TIMEOUT)
             }
         }
 
@@ -54,6 +90,14 @@ class ForegroundService : LifecycleService() {
         Thread {
             try {
                 while (true) {
+                    Handler(Looper.getMainLooper()).post {
+                        Toast.makeText(
+                            applicationContext,
+                            "interval: $interval, duration: $duration, is muted: $isMuted",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+
                     ++runCount
                     val nowTime = System.currentTimeMillis()
                     val expectedCount = ((nowTime - startTime) / 5000).toInt() + 1
@@ -67,7 +111,7 @@ class ForegroundService : LifecycleService() {
                     msg = "$shortMsg\nStarted from $startTime"
                     NotificationService.triggerTestNotification(builder, this, title, shortMsg, msg)
 
-                    if (!Constants.testNotiOnly) {
+                    if (!Constants.NO_CAMERA) {
                         startCamera()
                     }
 
