@@ -9,4 +9,48 @@
     </style>
 
     <style name="Theme.Timelapse" parent="Base.Theme.Timelapse" />
+
+    <style name="Button.FullWidth" parent="Widget.MaterialComponents.Button.TextButton.Dialog">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:maxWidth">@null</item>
+    </style>
+
+    <style name="ThemeOverlay.MaterialComponents.MaterialAlertDialog.FullWidthButtons">
+        <item name="materialAlertDialogButtonSpacerVisibility">2</item>
+        <item name="buttonBarPositiveButtonStyle">@style/Button.FullWidth</item>
+        <item name="buttonBarNegativeButtonStyle">@style/Button.FullWidth</item>
+        <item name="buttonBarNeutralButtonStyle">@style/Button.FullWidth</item>
+    </style>
+
+    <style name="SettingsTitle">
+        <item name="android:fontFamily">@font/harmonyos_sans_medium</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
+    <style name="SettingsBody">
+        <item name="android:fontFamily">@font/harmonyos_sans_medium</item>
+        <item name="android:textColor">#838285</item>
+        <item name="android:textSize">10sp</item>
+    </style>
+
+    <style name="SettingsToggleButton" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:fontFamily">@font/harmonyos_sans_medium</item>
+        <item name="android:minWidth">40dp</item>
+        <item name="android:minHeight">0dp</item>
+        <item name="android:padding">5dp</item>
+        <item name="android:paddingStart">5dp</item>
+        <item name="android:paddingEnd">5dp</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+
+    <style name="SettingsSlider" parent="">
+        <item name="labelBehavior">gone</item>
+        <item name="thumbRadius">6dp</item>
+        <item name="tickRadiusActive">3dp</item>
+        <!-- <item name="trackHeight">20dp</item> -->
+    </style>
 </resources>

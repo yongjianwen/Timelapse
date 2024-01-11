@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
+import android.media.MediaPlayer
 import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
@@ -20,6 +21,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import xiong.jianwen.timelapse.R
 import xiong.jianwen.timelapse.utils.UserPreferences
 import xiong.jianwen.timelapse.databinding.ActivityMainBinding
 import xiong.jianwen.timelapse.utils.Constants
@@ -45,7 +47,7 @@ class ForegroundService : LifecycleService(), CoroutineScope {
 
     @SuppressLint("NotificationPermission")
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // val interval = intent!!.getIntExtra("interval", -1)
+        // val interval = intent!!.getIntExtra("interval", 5)
         // Toast.makeText(applicationContext, interval.toString(), Toast.LENGTH_SHORT).show()
 
         val userPreferences = UserPreferences(this)
@@ -77,7 +79,7 @@ class ForegroundService : LifecycleService(), CoroutineScope {
             }
         }
 
-        val intervalInSeconds = 5L
+        val intervalInSeconds = 5    // 5L
         val startTime = System.currentTimeMillis()
         var runCount = 0
 
@@ -115,8 +117,10 @@ class ForegroundService : LifecycleService(), CoroutineScope {
                         startCamera()
                     }
 
-                    /*val mediaPlayer = MediaPlayer.create(this, R.raw.camera)
-                    mediaPlayer.start()*/
+                    if (!isMuted) {
+                        val mediaPlayer = MediaPlayer.create(this, R.raw.camera)
+                        mediaPlayer.start()
+                    }
 
                     // Test delivery methods: Queued delivery vs Timed delivery
                     /* Test results:

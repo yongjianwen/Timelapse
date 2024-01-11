@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="mtrl_slider_track_side_padding">5dp</dimen>
+    <dimen name="mtrl_slider_tick_min_spacing">1dp</dimen>
+    <dimen name="mtrl_slider_widget_height">28dp</dimen>
+</resources>

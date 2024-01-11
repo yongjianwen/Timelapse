@@ -10,7 +10,7 @@
         android:id="@+id/preview_view_camera"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@color/black" />
+        android:background="@color/white" />
 
     <Button
         android:id="@+id/button_capture"
@@ -33,89 +33,458 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/layout_settings"
+    <androidx.cardview.widget.CardView
+        android:id="@+id/card_view_settings"
         android:layout_width="350dp"
-        android:layout_height="350dp"
-        android:layout_marginBottom="10dp"
-        android:alpha="0.95"
-        android:background="@color/white"
-        android:elevation="2dp"
-        android:padding="20dp"
-        android:visibility="gone"
+        android:layout_height="wrap_content"
+        android:clipChildren="false"
+        app:cardCornerRadius="18dp"
+        app:cardElevation="8dp"
         app:layout_constraintBottom_toTopOf="@id/button_settings"
         app:layout_constraintEnd_toEndOf="@id/button_settings">
 
-        <TextView
-            android:id="@+id/text_view_interval"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Interval"
-            android:textColor="@color/black"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/layout_settings"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_margin="16dp"
+            android:clipChildren="false">
 
-        <SeekBar
-            android:id="@+id/seek_bar_interval"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            app:layout_constraintBottom_toBottomOf="@id/text_view_interval"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toEndOf="@id/text_view_interval"
-            app:layout_constraintTop_toTopOf="@id/text_view_interval" />
+            <!--<TextView
+                android:id="@+id/text_view_fps"
+                style="@style/SettingsTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/fps"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
 
-        <TextView
-            android:id="@+id/text_view_duration"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Duration"
-            android:textColor="@color/black"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/text_view_interval" />
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/button_toggle_group_fps"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constraintBottom_toBottomOf="@id/text_view_fps"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="@id/text_view_fps"
+                app:selectionRequired="true"
+                app:singleSelection="true">
 
-        <SeekBar
-            android:id="@+id/seek_bar_duration"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            app:layout_constraintBottom_toBottomOf="@id/text_view_duration"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toEndOf="@id/text_view_duration"
-            app:layout_constraintTop_toTopOf="@id/text_view_duration" />
+                <com.google.android.material.button.MaterialButton
+                    style="@style/SettingsToggleButton"
+                    android:text="@string/fps_24" />
 
-        <TextView
-            android:id="@+id/text_view_preview"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Toggle Preview"
-            android:textColor="@color/black"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/text_view_duration" />
+                <com.google.android.material.button.MaterialButton
+                    style="@style/SettingsToggleButton"
+                    android:text="@string/fps_30" />
 
-        <androidx.appcompat.widget.SwitchCompat
-            android:id="@+id/switch_preview"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            app:layout_constraintBottom_toBottomOf="@id/text_view_preview"
-            app:layout_constraintStart_toEndOf="@id/text_view_preview"
-            app:layout_constraintTop_toTopOf="@id/text_view_preview" />
+                <com.google.android.material.button.MaterialButton
+                    style="@style/SettingsToggleButton"
+                    android:text="@string/fps_60" />
 
-        <TextView
-            android:id="@+id/text_view_sound"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Toggle Sound"
-            android:textColor="@color/black"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/text_view_preview" />
+                <com.google.android.material.button.MaterialButton
+                    style="@style/SettingsToggleButton"
+                    android:text="@string/fps_120" />
 
-        <androidx.appcompat.widget.SwitchCompat
-            android:id="@+id/switch_sound"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            app:layout_constraintBottom_toBottomOf="@id/text_view_sound"
-            app:layout_constraintStart_toEndOf="@id/text_view_sound"
-            app:layout_constraintTop_toTopOf="@id/text_view_sound" />
+            </com.google.android.material.button.MaterialButtonToggleGroup>-->
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
+            <TextView
+                android:id="@+id/text_view_interval"
+                style="@style/SettingsTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/interval"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <com.google.android.material.slider.Slider
+                android:id="@+id/slider_interval"
+                style="@style/SettingsSlider"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:stepSize="5"
+                android:valueFrom="5"
+                android:valueTo="60"
+                app:layout_constraintTop_toBottomOf="@id/text_view_interval" />
+
+            <TextView
+                android:id="@+id/text_view_interval_value"
+                style="@style/SettingsBody"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:lines="1"
+                android:textAlignment="textEnd"
+                app:layout_constraintBottom_toBottomOf="@id/text_view_interval"
+                app:layout_constraintEnd_toEndOf="parent" />
+
+            <TextView
+                android:id="@+id/text_view_duration"
+                style="@style/SettingsTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="@string/duration"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/slider_interval" />
+
+            <com.google.android.material.slider.Slider
+                android:id="@+id/slider_duration"
+                style="@style/SettingsSlider"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:stepSize="5"
+                android:valueFrom="5"
+                android:valueTo="60"
+                app:layout_constraintTop_toBottomOf="@id/text_view_duration" />
+
+            <TextView
+                android:id="@+id/text_view_duration_value"
+                style="@style/SettingsBody"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:lines="1"
+                android:textAlignment="textEnd"
+                app:layout_constraintBottom_toBottomOf="@id/text_view_duration"
+                app:layout_constraintEnd_toEndOf="parent" />
+
+            <!--<TextView
+                android:id="@+id/text_view_count"
+                style="@style/SettingsTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:text="@string/count"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/slider_duration" />
+
+            <SeekBar
+                android:id="@+id/seek_bar_count"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                app:layout_constraintTop_toBottomOf="@id/text_view_count" />-->
+
+            <TextView
+                android:id="@+id/text_view_presets"
+                style="@style/SettingsTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:text="Presets"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/slider_duration" />
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/chip_group_presets"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:layout_constraintTop_toBottomOf="@id/text_view_presets">
+
+                <com.google.android.material.chip.Chip
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Sunrise/Sunset"
+                    android:textSize="10sp" />
+
+                <com.google.android.material.chip.Chip
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Traffic"
+                    android:textSize="10sp" />
+
+                <com.google.android.material.chip.Chip
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Stars"
+                    android:textSize="10sp" />
+
+                <com.google.android.material.chip.Chip
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="3D Printing"
+                    android:textSize="10sp" />
+
+                <com.google.android.material.chip.Chip
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Custom"
+                    android:textSize="10sp" />
+
+            </com.google.android.material.chip.ChipGroup>
+
+            <TextView
+                android:id="@+id/text_view_resulting"
+                style="@style/SettingsTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:text="Resulting File"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/chip_group_presets" />
+
+            <androidx.appcompat.widget.LinearLayoutCompat
+                android:id="@+id/layout_resulting"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+
+                app:layout_constraintTop_toBottomOf="@id/text_view_resulting">
+
+                <Space
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1"></Space>
+
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="60dp"
+                    android:layout_height="80dp"
+                    android:background="@color/black">
+
+                    <View
+                        android:id="@+id/settings_24_fps_view"
+                        android:layout_width="match_parent"
+                        android:layout_height="60dp"
+                        android:background="#EEEEDD"
+                        app:layout_constraintBottom_toBottomOf="parent" />
+
+                    <TextView
+                        android:id="@+id/settings_24_fps"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="24 FPS"
+                        android:textAlignment="center"
+                        android:textColor="@color/white"
+                        android:textSize="10sp"
+                        app:layout_constraintBottom_toTopOf="@id/settings_24_fps_view"
+                        app:layout_constraintTop_toTopOf="parent" />
+
+                    <TextView
+                        android:id="@+id/settings_24_fps_video_length"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="01:55"
+                        android:textAlignment="center"
+                        android:textSize="10sp"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintTop_toBottomOf="@id/settings_24_fps" />
+
+                </androidx.constraintlayout.widget.ConstraintLayout>
+
+                <Space
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1"></Space>
+
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="60dp"
+                    android:layout_height="80dp"
+                    android:background="@color/black">
+
+                    <View
+                        android:id="@+id/settings_30_fps_view"
+                        android:layout_width="match_parent"
+                        android:layout_height="60dp"
+                        android:background="#EEEEDD"
+                        app:layout_constraintBottom_toBottomOf="parent" />
+
+                    <TextView
+                        android:id="@+id/settings_30_fps"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="30 FPS"
+                        android:textAlignment="center"
+                        android:textColor="@color/white"
+                        android:textSize="10sp"
+                        app:layout_constraintBottom_toTopOf="@id/settings_30_fps_view"
+                        app:layout_constraintTop_toTopOf="parent" />
+
+                    <TextView
+                        android:id="@+id/settings_30_fps_video_length"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="01:32"
+                        android:textAlignment="center"
+                        android:textSize="10sp"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintTop_toBottomOf="@id/settings_30_fps" />
+
+                </androidx.constraintlayout.widget.ConstraintLayout>
+
+                <Space
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1"></Space>
+
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="60dp"
+                    android:layout_height="80dp"
+                    android:background="@color/black">
+
+                    <View
+                        android:id="@+id/settings_60_fps_view"
+                        android:layout_width="match_parent"
+                        android:layout_height="60dp"
+                        android:background="#EEEEDD"
+                        app:layout_constraintBottom_toBottomOf="parent" />
+
+                    <TextView
+                        android:id="@+id/settings_60_fps"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="60 FPS"
+                        android:textAlignment="center"
+                        android:textColor="@color/white"
+                        android:textSize="10sp"
+                        app:layout_constraintBottom_toTopOf="@id/settings_60_fps_view"
+                        app:layout_constraintTop_toTopOf="parent" />
+
+                    <TextView
+                        android:id="@+id/settings_60_fps_video_length"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="00:46"
+                        android:textAlignment="center"
+                        android:textSize="10sp"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintTop_toBottomOf="@id/settings_60_fps" />
+
+                </androidx.constraintlayout.widget.ConstraintLayout>
+
+                <Space
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1"></Space>
+
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="60dp"
+                    android:layout_height="80dp"
+                    android:background="@color/black">
+
+                    <View
+                        android:id="@+id/settings_120_fps_view"
+                        android:layout_width="match_parent"
+                        android:layout_height="60dp"
+                        android:background="#EEEEDD"
+                        app:layout_constraintBottom_toBottomOf="parent" />
+
+                    <TextView
+                        android:id="@+id/settings_120_fps"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="120 FPS"
+                        android:textAlignment="center"
+                        android:textColor="@color/white"
+                        android:textSize="10sp"
+                        app:layout_constraintBottom_toTopOf="@id/settings_120_fps_view"
+                        app:layout_constraintTop_toTopOf="parent" />
+
+                    <TextView
+                        android:id="@+id/settings_120_fps_video_length"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="00:23"
+                        android:textAlignment="center"
+                        android:textSize="10sp"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintTop_toBottomOf="@id/settings_120_fps" />
+
+                </androidx.constraintlayout.widget.ConstraintLayout>
+
+                <Space
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1"></Space>
+
+            </androidx.appcompat.widget.LinearLayoutCompat>
+
+            <View
+                android:id="@+id/divider"
+                android:layout_width="match_parent"
+                android:layout_height="2px"
+                android:layout_marginTop="18dp"
+                android:background="?android:attr/listDivider"
+                app:layout_constraintTop_toBottomOf="@id/layout_resulting"
+                tools:ignore="PxUsage" />
+
+            <TextView
+                android:id="@+id/text_view_viewfinder"
+                style="@style/SettingsTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:text="@string/viewfinder"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/divider" />
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switch_viewfinder"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constraintBottom_toBottomOf="@id/text_view_viewfinder"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="@id/text_view_viewfinder" />
+
+            <TextView
+                android:id="@+id/text_view_sound"
+                style="@style/SettingsTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:text="@string/shutter_sound"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/text_view_viewfinder" />
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switch_shutter_sound"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constraintBottom_toBottomOf="@id/text_view_sound"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="@id/text_view_sound" />
+
+            <TextView
+                android:id="@+id/text_view_camera"
+                style="@style/SettingsTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:text="@string/camera"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/text_view_sound" />
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/button_toggle_group_camera"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constraintBottom_toBottomOf="@id/text_view_camera"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="@id/text_view_camera"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+
+                <!--<com.google.android.material.button.MaterialButton
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="0dp"
+                    android:minHeight="0dp"
+                    android:padding="0dp"
+                    android:text="Front"
+                    style="@style/SettingsTitle" />
+
+                <com.google.android.material.button.MaterialButton
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="0dp"
+                    android:minHeight="0dp"
+                    android:padding="0dp"
+                    android:text="Back"
+                    style="@style/SettingsTitle" />-->
+
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </androidx.cardview.widget.CardView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

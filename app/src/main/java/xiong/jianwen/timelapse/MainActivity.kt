@@ -6,16 +6,20 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.provider.MediaStore
 import android.util.Log
 import android.view.View
+import android.view.ViewGroup
 import android.view.animation.AlphaAnimation
 import android.view.animation.Animation
 import android.view.animation.AnimationSet
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.ScaleAnimation
-import android.widget.SeekBar
+import android.widget.Button
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -26,20 +30,25 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
+import androidx.core.view.marginTop
+import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.slider.Slider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import xiong.jianwen.timelapse.databinding.ActivityMainBinding
 import xiong.jianwen.timelapse.services.ForegroundService
-import xiong.jianwen.timelapse.utils.Constants
 import xiong.jianwen.timelapse.utils.UserPreferences
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import kotlin.coroutines.CoroutineContext
+
 
 class MainActivity : AppCompatActivity(), CoroutineScope {
 
@@ -49,9 +58,9 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
         get() = Dispatchers.Main + job
 
     // align to minute
-    // interval
-    // duration
-    // presets
+    // interval (5 seconds ~ 1 hour = 3600 seconds) - 5s, 30s, 60s, 2m, 5m,
+    // duration (and resulting)
+    // presets (notify sunrise/sunset timings)
     // extend manually
     // preview past captures
     // gen video
@@ -60,6 +69,8 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
     // subfolder/image file prefix naming
     // change camera selection
     // blur view - not to be implemented for now
+    // pause
+    // watermark
 
     init {
         instance = this
@@ -81,7 +92,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
             if (!permissionGranted) {
                 Toast.makeText(baseContext, "Permission request denied", Toast.LENGTH_SHORT).show()
             } else {
-                startCamera()
+//                startCamera()
             }
         }
 
@@ -115,7 +126,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
         if (!foregroundServiceRunning()) {
             val serviceIntent = Intent(this, ForegroundService::class.java)
             serviceIntent.putExtra("interval", 123)
-            startForegroundService(serviceIntent)
+            // startForegroundService(serviceIntent)
         }
 
         /* Compromises to be made if AlarmManager is to be used:
@@ -156,7 +167,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
             else viewBinding.layoutSettings.visibility = View.VISIBLE*/
 
             // Animation
-            if (viewBinding.layoutSettings.isVisible) {
+            if (viewBinding.cardViewSettings.isVisible) {
                 val scaleAnimation = ScaleAnimation(
                     1f, 0.1f,   // Start and end values for the X axis scaling
                     1f, 0.1f,   // Start and end values for the Y axis scaling
@@ -174,8 +185,8 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
                 val animationSet = AnimationSet(true)
                 animationSet.addAnimation(scaleAnimation)
                 animationSet.addAnimation(alphaAnimation)
-                viewBinding.layoutSettings.startAnimation(animationSet)
-                viewBinding.layoutSettings.visibility = View.GONE
+                viewBinding.cardViewSettings.startAnimation(animationSet)
+                viewBinding.cardViewSettings.visibility = View.GONE
             } else {
                 val scaleAnimation = ScaleAnimation(
                     0f, 1f,   // Start and end values for the X axis scaling
@@ -194,12 +205,12 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
                 val animationSet = AnimationSet(true)
                 animationSet.addAnimation(scaleAnimation)
                 animationSet.addAnimation(alphaAnimation)
-                viewBinding.layoutSettings.startAnimation(animationSet)
-                viewBinding.layoutSettings.visibility = View.VISIBLE
+                viewBinding.cardViewSettings.startAnimation(animationSet)
+                viewBinding.cardViewSettings.visibility = View.VISIBLE
             }
         }
 
-        viewBinding.seekBarInterval.setOnSeekBarChangeListener(object :
+        /*viewBinding.seekBarInterval.setOnSeekBarChangeListener(object :
             SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(p0: SeekBar?, p1: Int, p2: Boolean) {
                 viewBinding.textViewInterval.text = p1.toString()
@@ -223,9 +234,30 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
             override fun onStartTrackingTouch(p0: SeekBar?) {}
 
             override fun onStopTrackingTouch(p0: SeekBar?) {}
+        })*/
+
+        viewBinding.sliderInterval.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
+            override fun onStartTrackingTouch(slider: Slider) {
+
+            }
+
+            override fun onStopTrackingTouch(slider: Slider) {
+
+            }
         })
 
-        viewBinding.seekBarDuration.setOnSeekBarChangeListener(object :
+        viewBinding.sliderInterval.addOnChangeListener { slider, value, fromUser ->
+            /*slider.setLabelFormatter {
+                return@setLabelFormatter it.toString()
+            }*/
+
+            viewBinding.textViewIntervalValue.text =
+                getString(R.string.string_display_value, value.toString())
+            val v = getSystemService(VIBRATOR_SERVICE) as Vibrator
+            v.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK))
+        }
+
+        /*viewBinding.seekBarDuration.setOnSeekBarChangeListener(object :
             SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(p0: SeekBar?, p1: Int, p2: Boolean) {
                 viewBinding.textViewDuration.text = p1.toString()
@@ -249,9 +281,14 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
             override fun onStartTrackingTouch(p0: SeekBar?) {}
 
             override fun onStopTrackingTouch(p0: SeekBar?) {}
-        })
+        })*/
 
-        viewBinding.switchPreview.setOnCheckedChangeListener { _, isChecked ->
+        viewBinding.sliderDuration.addOnChangeListener { slider, value, fromUser ->
+            viewBinding.textViewDurationValue.text =
+                getString(R.string.string_display_value, "$value ≡ 120 shots")
+        }
+
+        viewBinding.switchViewfinder.setOnCheckedChangeListener { _, isChecked ->
             /*Toast.makeText(
                 applicationContext,
                 isChecked.toString(),
@@ -271,20 +308,91 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
             }
         }
 
-        viewBinding.switchSound.setOnCheckedChangeListener { _, isChecked ->
+        viewBinding.switchShutterSound.setOnCheckedChangeListener { _, isChecked ->
             lifecycleScope.launch { userPreferences.saveIsMuted(!isChecked) }
         }
     }
 
     override fun onResume() {
         super.onResume()
+        Log.d(TAG, "onResume")
+
         userPreferences = UserPreferences(this)
-        lifecycleScope.launch {
+        /*lifecycleScope.launch {
             userPreferences.saveUserPreferences(
                 Constants.DEFAULT_INTERVAL,
                 Constants.DEFAULT_DURATION,
                 Constants.DEFAULT_IS_MUTED
             )
+        }*/
+
+        MaterialAlertDialogBuilder(
+            this, R.style.ThemeOverlay_MaterialComponents_MaterialAlertDialog_FullWidthButtons
+        ).setTitle("Turn Off Battery Optimization")
+            .setMessage("Timelapse requires to continue running the app when in background. Turn off battery optimization in Settings.")
+//            .setNegativeButton("Cancel") { dialog, which ->
+//                // Respond to negative button press
+//            }
+            .setPositiveButton("OK") { dialog, which ->
+                // startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+            }
+            .setCancelable(false)
+//            .show()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        Log.d(TAG, "onPause")
+    }
+
+    override fun onStop() {
+        super.onStop()
+        Log.d(TAG, "onStop")
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        Log.d(TAG, "onWindowFocusChanged: $hasFocus")
+        // Closing the app: onWindowFocusChanged: false -> onPause
+        // Opening the app: onResume -> onWindowFocusChanged: true
+
+        // Opening side panel: onWindowFocusChanged: false
+        // Using another app from side panel: no change
+        // Touching back on the app: onWindowFocusChanged: true
+        // Touching on another app: onWindowFocusChanged: false
+        // Minimizing another app: onWindowFocusChanged: true
+        // Restoring another app: onWindowFocusChanged: false
+
+        // Touching another app in split screen: onWindowFocusChanged: false
+        // Touching back on the app in split screen: onWindowFocusChanged: true
+
+        // Dragging down notification center/control panel: onWindowFocusChanged: false
+        // Dragging up notification center/control panel: onWindowFocusChanged: true
+
+        if (hasFocus) {
+            /* Google is against apps allowing users to whitelist battery optimizations from within
+               the app using the permission REQUEST_IGNORE_BATTERY_OPTIMIZATIONS and the following
+               intent. Instead, direct the users to the "Battery optimization" page for them to
+               manually change the settings.
+            */
+            /*startActivity(
+                Intent(
+                    Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                    Uri.parse("package:$packageName")
+                )
+            )*/
+
+            MaterialAlertDialogBuilder(
+                this, R.style.ThemeOverlay_MaterialComponents_MaterialAlertDialog_FullWidthButtons
+                //,R.style.ThemeOverlay_MaterialComponents_MaterialAlertDialog_FullWidthButtons
+            ).setTitle("Title").setMessage("Message")
+                .setNegativeButton("Decline") { dialog, which ->
+                    // Respond to negative button press
+                }
+                .setPositiveButton("Accept") { dialog, which ->
+                    // startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                }
+//                .show()
         }
     }
 
@@ -319,19 +427,70 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
 
             // Select back camera as a default
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+            // -1: CameraSelector.LENS_FACING_UNKNOWN
+            // 0: CameraSelector.LENS_FACING_FRONT
+            // 1: CameraSelector.LENS_FACING_BACK
+            // 2: CameraSelector.LENS_FACING_EXTERNAL
+            var arr = listOf<Int>()
+            for (cameraInfo in cameraProvider.availableCameraInfos) {
+                var cameraName: String = when (cameraInfo.lensFacing) {
+                    CameraSelector.LENS_FACING_FRONT -> "Front"
+                    CameraSelector.LENS_FACING_BACK -> "Back"
+                    else -> "Other"
+                }
+                Log.d(TAG, cameraInfo.lensFacing.toString() + ": " + cameraName)
+                // Must use MaterialButton (it seems that using Button will not work)
+                val newButton = MaterialButton(
+                    viewBinding.buttonToggleGroupCamera.context,
+                    null,
+                    com.google.android.material.R.attr.materialButtonOutlinedStyle
+                )
+                newButton.id = View.generateViewId()
+                arr = arr.plus(newButton.id)
+                newButton.text = cameraName
+                newButton.minHeight = 0
+                newButton.minWidth = 0
+                // viewBinding.buttonToggleGroupCamera.addView(newButton)
+                /*viewBinding.buttonToggleGroupCamera.post {
+                    viewBinding.buttonToggleGroupCamera.addView(
+                        newButton, ViewGroup.LayoutParams(
+                            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
+                        )
+                    )
+                    viewBinding.buttonToggleGroupCamera.invalidate()
+                }*/
+                viewBinding.buttonToggleGroupCamera.addView(
+                    newButton, ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
+                    )
+                )
+//                viewBinding.buttonToggleGroupCamera.invalidate()
+                // Log.d(TAG, "new button added: " + viewBinding.buttonToggleGroupCamera.childCount)
+
+                newButton.setOnClickListener { view ->
+                    val selectedCamera = arr.indexOf(view.id)
+                    Toast.makeText(this, selectedCamera.toString(), Toast.LENGTH_SHORT).show()
+                }
+            }
+            viewBinding.buttonToggleGroupCamera.check(arr.first())
 
             try {
                 // Unbind use cases before rebinding
                 cameraProvider.unbindAll()
 
                 // switch
-                viewBinding.switchPreview.isChecked = false
+                viewBinding.switchViewfinder.isChecked = false
 
                 // Bind use cases to camera
-                cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
+                cameraProvider.bindToLifecycle(
+                    this,
+                    cameraSelector,
+                    preview,
+                    imageCapture
+                )
 
                 // switch
-                viewBinding.switchPreview.isChecked = true
+                viewBinding.switchViewfinder.isChecked = true
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -340,36 +499,12 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
 
     @SuppressLint("SimpleDateFormat", "BatteryLife")
     public fun takePhoto() {
-        /*Google is against apps allowing users to whitelist battery optimizations from within the app
-        using the following permission REQUEST_IGNORE_BATTERY_OPTIMIZATIONS. Instead, direct the users to
-        the "Battery optimization" page.*/
-//        startActivity(
-//            Intent(
-//                Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
-//                Uri.parse("package:$packageName")
-//            )
-//        )
-
-        // startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
-
-        // var age by rememberSaveable { mutableStateOf("") }
-//        Toast.makeText(this, userInfo.userAgeFlow.collectAsState(0).value.toString(), Toast.LENGTH_LONG).show()
-//        return
-
-        /*var age = 0
-        var myName = ""
-        lifecycleScope.launch {
-            userPreferences.userAgeFlow.collect {
-                age = it
-            }
+        // Using foreground service to achieve repeating and timely triggers
+        if (!foregroundServiceRunning()) {
+            val serviceIntent = Intent(this, ForegroundService::class.java)
+            // serviceIntent.putExtra("interval", 5)
+            startForegroundService(serviceIntent)
         }
-        lifecycleScope.launch {
-            userPreferences.userNameFlow.collect {
-                myName = it
-            }
-        }*/
-//        Toast.makeText(applicationContext, "$age, $myName", Toast.LENGTH_LONG).show()
-        return
 
         // Get a stable reference of the modifiable image capture use case
         // This will be null if photo button is clicked before image capture is set up
@@ -417,7 +552,10 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
     }
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
-        ContextCompat.checkSelfPermission(baseContext, it) == PackageManager.PERMISSION_GRANTED
+        ContextCompat.checkSelfPermission(
+            baseContext,
+            it
+        ) == PackageManager.PERMISSION_GRANTED
     }
 
     private fun requestPermissions() {

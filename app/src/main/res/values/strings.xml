@@ -1,3 +1,17 @@
 <resources>
     <string name="app_name">Timelapse</string>
+
+    <!-- Settings -->
+    <string name="fps">(Intended) FPS</string>
+    <string name="fps_24">24</string>
+    <string name="fps_30">30</string>
+    <string name="fps_60">60</string>
+    <string name="fps_120">120</string>
+    <string name="interval">Interval</string>
+    <string name="duration">Duration</string>
+    <string name="string_display_value">%1$s</string>
+    <string name="count">Count</string>
+    <string name="viewfinder">Viewfinder</string>
+    <string name="shutter_sound">Shutter Sound</string>
+    <string name="camera">Camera</string>
 </resources>
