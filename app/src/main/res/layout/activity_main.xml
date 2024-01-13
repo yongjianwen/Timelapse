@@ -96,16 +96,6 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
 
-            <com.google.android.material.slider.Slider
-                android:id="@+id/slider_interval"
-                style="@style/SettingsSlider"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:stepSize="5"
-                android:valueFrom="5"
-                android:valueTo="60"
-                app:layout_constraintTop_toBottomOf="@id/text_view_interval" />
-
             <TextView
                 android:id="@+id/text_view_interval_value"
                 style="@style/SettingsBody"
@@ -116,6 +106,46 @@
                 app:layout_constraintBottom_toBottomOf="@id/text_view_interval"
                 app:layout_constraintEnd_toEndOf="parent" />
 
+            <Space
+                android:id="@+id/space_below_text_view_interval"
+                android:layout_width="match_parent"
+                android:layout_height="4dp"
+                app:layout_constraintTop_toBottomOf="@id/text_view_interval" />
+
+            <com.google.android.material.slider.Slider
+                android:id="@+id/slider_interval"
+                style="@style/SettingsSlider"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:stepSize="5"
+                android:valueFrom="5"
+                android:valueTo="80"
+                app:layout_constraintTop_toBottomOf="@id/space_below_text_view_interval"
+                app:thumbElevation="2dp"
+                app:tickVisible="false" />
+
+            <com.google.android.flexbox.FlexboxLayout
+                android:id="@+id/flexbox_layout_interval_tick"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:justifyContent="space_between"
+                app:layout_constraintBottom_toBottomOf="@id/slider_interval"
+                app:layout_constraintTop_toTopOf="@id/slider_interval" />
+
+            <com.google.android.flexbox.FlexboxLayout
+                android:id="@+id/flexbox_layout_interval_line"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:justifyContent="space_between"
+                app:layout_constraintTop_toBottomOf="@id/flexbox_layout_interval_tick" />
+
+            <com.google.android.flexbox.FlexboxLayout
+                android:id="@+id/flexbox_layout_interval_marking"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:justifyContent="space_between"
+                app:layout_constraintTop_toBottomOf="@id/flexbox_layout_interval_line" />
+
             <TextView
                 android:id="@+id/text_view_duration"
                 style="@style/SettingsTitle"
@@ -124,17 +154,7 @@
                 android:layout_marginTop="10dp"
                 android:text="@string/duration"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/slider_interval" />
-
-            <com.google.android.material.slider.Slider
-                android:id="@+id/slider_duration"
-                style="@style/SettingsSlider"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:stepSize="5"
-                android:valueFrom="5"
-                android:valueTo="60"
-                app:layout_constraintTop_toBottomOf="@id/text_view_duration" />
+                app:layout_constraintTop_toBottomOf="@id/flexbox_layout_interval_marking" />
 
             <TextView
                 android:id="@+id/text_view_duration_value"
@@ -146,22 +166,28 @@
                 app:layout_constraintBottom_toBottomOf="@id/text_view_duration"
                 app:layout_constraintEnd_toEndOf="parent" />
 
-            <!--<TextView
-                android:id="@+id/text_view_count"
-                style="@style/SettingsTitle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="18dp"
-                android:text="@string/count"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/slider_duration" />
+            <Space
+                android:id="@+id/space_below_text_view_duration"
+                android:layout_width="match_parent"
+                android:layout_height="4dp"
+                app:layout_constraintTop_toBottomOf="@id/text_view_duration" />
 
-            <SeekBar
-                android:id="@+id/seek_bar_count"
+            <com.google.android.material.slider.Slider
+                android:id="@+id/slider_duration"
+                style="@style/SettingsSlider"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                app:layout_constraintTop_toBottomOf="@id/text_view_count" />-->
+                app:layout_constraintTop_toBottomOf="@id/space_below_text_view_duration"
+                app:thumbElevation="2dp"
+                app:tickVisible="false" />
+
+            <com.google.android.flexbox.FlexboxLayout
+                android:id="@+id/flexbox_layout_duration_tick"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:justifyContent="space_between"
+                app:layout_constraintBottom_toBottomOf="@id/slider_duration"
+                app:layout_constraintTop_toTopOf="@id/slider_duration" />
 
             <TextView
                 android:id="@+id/text_view_presets"
@@ -169,7 +195,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="18dp"
-                android:text="Presets"
+                android:text="@string/presets"
+                android:visibility="gone"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/slider_duration" />
 
@@ -177,6 +204,7 @@
                 android:id="@+id/chip_group_presets"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:visibility="gone"
                 app:layout_constraintTop_toBottomOf="@id/text_view_presets">
 
                 <com.google.android.material.chip.Chip
@@ -218,6 +246,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="18dp"
                 android:text="Resulting File"
+                android:visibility="gone"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/chip_group_presets" />
 
@@ -226,13 +255,14 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
+                android:visibility="gone"
 
                 app:layout_constraintTop_toBottomOf="@id/text_view_resulting">
 
                 <Space
                     android:layout_width="0dp"
                     android:layout_height="1dp"
-                    android:layout_weight="1"></Space>
+                    android:layout_weight="1" />
 
                 <androidx.constraintlayout.widget.ConstraintLayout
                     android:layout_width="60dp"
@@ -250,7 +280,7 @@
                         android:id="@+id/settings_24_fps"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="24 FPS"
+                        android:text="@string/fps_24"
                         android:textAlignment="center"
                         android:textColor="@color/white"
                         android:textSize="10sp"
@@ -272,7 +302,7 @@
                 <Space
                     android:layout_width="0dp"
                     android:layout_height="1dp"
-                    android:layout_weight="1"></Space>
+                    android:layout_weight="1" />
 
                 <androidx.constraintlayout.widget.ConstraintLayout
                     android:layout_width="60dp"
@@ -290,7 +320,7 @@
                         android:id="@+id/settings_30_fps"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="30 FPS"
+                        android:text="@string/fps_30"
                         android:textAlignment="center"
                         android:textColor="@color/white"
                         android:textSize="10sp"
@@ -312,7 +342,7 @@
                 <Space
                     android:layout_width="0dp"
                     android:layout_height="1dp"
-                    android:layout_weight="1"></Space>
+                    android:layout_weight="1" />
 
                 <androidx.constraintlayout.widget.ConstraintLayout
                     android:layout_width="60dp"
@@ -330,7 +360,7 @@
                         android:id="@+id/settings_60_fps"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="60 FPS"
+                        android:text="@string/fps_60"
                         android:textAlignment="center"
                         android:textColor="@color/white"
                         android:textSize="10sp"
@@ -352,7 +382,7 @@
                 <Space
                     android:layout_width="0dp"
                     android:layout_height="1dp"
-                    android:layout_weight="1"></Space>
+                    android:layout_weight="1" />
 
                 <androidx.constraintlayout.widget.ConstraintLayout
                     android:layout_width="60dp"
@@ -370,7 +400,7 @@
                         android:id="@+id/settings_120_fps"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="120 FPS"
+                        android:text="@string/fps_120"
                         android:textAlignment="center"
                         android:textColor="@color/white"
                         android:textSize="10sp"
@@ -392,7 +422,7 @@
                 <Space
                     android:layout_width="0dp"
                     android:layout_height="1dp"
-                    android:layout_weight="1"></Space>
+                    android:layout_weight="1" />
 
             </androidx.appcompat.widget.LinearLayoutCompat>
 
@@ -486,5 +516,18 @@
         </androidx.constraintlayout.widget.ConstraintLayout>
 
     </androidx.cardview.widget.CardView>
+
+    <com.google.android.material.slider.Slider
+        android:id="@+id/slider_width_control"
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="50dp"
+        android:layout_marginBottom="150dp"
+        android:stepSize="25"
+        android:valueFrom="100"
+        android:valueTo="500"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>

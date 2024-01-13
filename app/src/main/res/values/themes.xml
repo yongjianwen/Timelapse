@@ -6,6 +6,13 @@
         <item name="android:windowTranslucentStatus">false</item>
         <item name="android:windowTranslucentNavigation">true</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
+
+        <item name="intervalTickStyle">@style/IntervalTick</item>
+        <item name="intervalTickMajorStyle">@style/IntervalTick.Major</item>
+        <item name="intervalLineStyle">@style/IntervalLine</item>
+        <item name="intervalLineMajorStyle">@style/IntervalLine.Major</item>
+        <item name="intervalMarkingStyle">@style/IntervalMarking</item>
+        <item name="intervalMarkingMajorStyle">@style/IntervalMarking.Major</item>
     </style>
 
     <style name="Theme.Timelapse" parent="Base.Theme.Timelapse" />
@@ -48,9 +55,56 @@
     </style>
 
     <style name="SettingsSlider" parent="">
+        <item name="android:layout_margin">0dp</item>
+        <item name="android:paddingStart">0dp</item>
+        <item name="android:paddingEnd">0dp</item>
         <item name="labelBehavior">gone</item>
         <item name="thumbRadius">6dp</item>
         <item name="tickRadiusActive">3dp</item>
-        <!-- <item name="trackHeight">20dp</item> -->
+        <item name="tickRadiusInactive">2dp</item>
+        <item name="trackHeight">20dp</item>
+    </style>
+
+    <style name="IntervalTick">
+        <item name="android:layout_width">@dimen/slider_tick_diameter</item>
+        <item name="android:layout_height">@dimen/slider_tick_diameter</item>
+        <item name="android:alpha">1</item>
+        <item name="android:background">@drawable/rounded2</item>
+        <item name="android:scaleX">1</item>
+        <item name="android:scaleY">1</item>
+    </style>
+
+    <style name="IntervalTick.Major">
+        <item name="android:scaleX">2</item>
+        <item name="android:scaleY">2</item>
+    </style>
+
+    <style name="IntervalLine">
+        <item name="android:layout_width">@dimen/slider_line_width</item>
+        <item name="android:layout_height">@dimen/slider_line_height</item>
+        <item name="android:background">@color/easy_grey</item>
+        <item name="android:elevation">0dp</item>
+    </style>
+
+    <style name="IntervalLine.Major">
+        <item name="android:layout_height">@dimen/slider_major_line_height</item>
+        <item name="android:background">@color/easy_red</item>
+        <item name="android:scaleX">1.6</item>
+    </style>
+
+    <style name="IntervalMarking">
+        <item name="android:layout_width">@dimen/slider_marking_width</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:elevation">1dp</item>
+        <item name="android:fontFamily">@font/harmonyos_sans_regular</item>
+        <item name="android:textAlignment">center</item>
+        <item name="android:textColor">@color/easy_grey</item>
+        <item name="android:textSize">6sp</item>
+    </style>
+
+    <style name="IntervalMarking.Major">
+        <item name="android:fontFamily">@font/harmonyos_sans_bold</item>
+        <item name="android:textColor">@color/easy_red</item>
+        <item name="android:textSize">8sp</item>
     </style>
 </resources>

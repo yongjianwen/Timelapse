@@ -6,7 +6,6 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -14,12 +13,13 @@ import android.provider.MediaStore
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewGroup.MarginLayoutParams
 import android.view.animation.AlphaAnimation
 import android.view.animation.Animation
 import android.view.animation.AnimationSet
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.ScaleAnimation
-import android.widget.Button
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -30,9 +30,8 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
-import androidx.core.view.marginTop
-import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
+import com.google.android.flexbox.FlexboxLayout
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.slider.Slider
@@ -42,6 +41,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import xiong.jianwen.timelapse.databinding.ActivityMainBinding
 import xiong.jianwen.timelapse.services.ForegroundService
+import xiong.jianwen.timelapse.utils.Constants
+import xiong.jianwen.timelapse.utils.Utilities
 import xiong.jianwen.timelapse.utils.UserPreferences
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -58,10 +59,11 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
         get() = Dispatchers.Main + job
 
     // align to minute
-    // interval (5 seconds ~ 1 hour = 3600 seconds) - 5s, 30s, 60s, 2m, 5m,
-    // duration (and resulting)
+    // interval (5 seconds ~ 1 hour = 3600 seconds) - 5s, 10s, 15s, 20s, 25s, 30s, 1m, 2m, 5m, 10m, 15m, 20m, 25m, 30m, 45m, 60m
+    // duration (and resulting) - based on 600 shots
+    // size estimation
     // presets (notify sunrise/sunset timings)
-    // extend manually
+    // extend manually (and allow modify interval halfway)
     // preview past captures
     // gen video
     // toggle preview
@@ -71,6 +73,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
     // blur view - not to be implemented for now
     // pause
     // watermark
+    // AE/AF lock (and reminder)
 
     init {
         instance = this
@@ -118,7 +121,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
             requestPermissions()
         }
 
-        viewBinding.buttonCapture.setOnClickListener { takePhoto() }
+        initViews()
 
         cameraExecutor = Executors.newSingleThreadExecutor()
 
@@ -210,6 +213,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
             }
         }
 
+
         /*viewBinding.seekBarInterval.setOnSeekBarChangeListener(object :
             SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(p0: SeekBar?, p1: Int, p2: Boolean) {
@@ -238,7 +242,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
 
         viewBinding.sliderInterval.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
             override fun onStartTrackingTouch(slider: Slider) {
-
+                // viewBinding.sliderInterval.stepSize = 10f
             }
 
             override fun onStopTrackingTouch(slider: Slider) {
@@ -246,15 +250,9 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
             }
         })
 
-        viewBinding.sliderInterval.addOnChangeListener { slider, value, fromUser ->
-            /*slider.setLabelFormatter {
-                return@setLabelFormatter it.toString()
-            }*/
-
-            viewBinding.textViewIntervalValue.text =
-                getString(R.string.string_display_value, value.toString())
-            val v = getSystemService(VIBRATOR_SERVICE) as Vibrator
-            v.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK))
+        viewBinding.textViewIntervalValue.setOnClickListener { view ->
+            viewBinding.sliderInterval.stepSize = 0f
+            viewBinding.sliderInterval.value = 68.754f
         }
 
         /*viewBinding.seekBarDuration.setOnSeekBarChangeListener(object :
@@ -283,18 +281,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
             override fun onStopTrackingTouch(p0: SeekBar?) {}
         })*/
 
-        viewBinding.sliderDuration.addOnChangeListener { slider, value, fromUser ->
-            viewBinding.textViewDurationValue.text =
-                getString(R.string.string_display_value, "$value ≡ 120 shots")
-        }
-
         viewBinding.switchViewfinder.setOnCheckedChangeListener { _, isChecked ->
-            /*Toast.makeText(
-                applicationContext,
-                isChecked.toString(),
-                Toast.LENGTH_SHORT
-            ).show()*/
-
             if (isChecked) {
                 cameraProvider.bindToLifecycle(
                     this,
@@ -311,6 +298,149 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
         viewBinding.switchShutterSound.setOnCheckedChangeListener { _, isChecked ->
             lifecycleScope.launch { userPreferences.saveIsMuted(!isChecked) }
         }
+
+        viewBinding.sliderWidthControl.addOnChangeListener { _, value, _ ->
+            val p = viewBinding.cardViewSettings.layoutParams
+            p.width = Utilities.dpToPx(value.toInt())
+            viewBinding.cardViewSettings.requestLayout()
+        }
+    }
+
+    private fun initViews() {
+        val sliderTickDiameter = resources.getDimension(R.dimen.slider_tick_diameter).toInt()
+        val sliderLineWidth = resources.getDimension(R.dimen.slider_line_width).toInt()
+        val sliderLineHeight = resources.getDimension(R.dimen.slider_line_height).toInt()
+        val sliderMajorLineHeight = resources.getDimension(R.dimen.slider_major_line_height).toInt()
+        val sliderMarkingWidth = resources.getDimension(R.dimen.slider_marking_width).toInt()
+
+        // Initialize interval slider
+        // TODO: Change to read from DataStore
+        viewBinding.sliderInterval.stepSize =
+            resources.getInteger(R.integer.intervalStartInSeconds).toFloat()
+        viewBinding.sliderInterval.valueFrom =
+            resources.getInteger(R.integer.intervalStartInSeconds).toFloat()
+        viewBinding.sliderInterval.valueTo = resources.getInteger(R.integer.intervalStartInSeconds)
+            .toFloat() * Constants.INTERVAL_MAP.size
+
+        // Initialize duration slider
+        updateDurationSliderRange(Utilities.mapIntervalInSeconds(viewBinding.sliderInterval.value))
+
+        // Update layout margins
+        for (view in arrayOf(
+            viewBinding.flexboxLayoutIntervalTick,
+            viewBinding.flexboxLayoutIntervalLine,
+            viewBinding.flexboxLayoutIntervalMarking,
+            viewBinding.flexboxLayoutDurationTick,
+        )) {
+            val p = view.layoutParams as MarginLayoutParams
+            val itemHalfWidth = when (view) {
+                viewBinding.flexboxLayoutIntervalTick -> sliderTickDiameter / 2f
+                viewBinding.flexboxLayoutIntervalLine -> sliderLineWidth / 2f
+                viewBinding.flexboxLayoutIntervalMarking -> sliderMarkingWidth / 2f
+                viewBinding.flexboxLayoutDurationTick -> sliderTickDiameter / 2f
+                else -> 0f
+            }
+            // Formula to calculate side margins: trackHeight / 2 - itemHalfWidth - 2dp
+            val margin =
+                (viewBinding.sliderInterval.trackHeight / 2f - itemHalfWidth - Utilities.dpToPx(2)).toInt()
+            p.setMargins(margin, 0, margin, 0)
+            view.requestLayout()
+        }
+
+        // Populate ticks, lines and markings for interval slider
+        for (entry in Constants.INTERVAL_MAP.entries) {
+            val (key, isMajor) = entry
+            val tick =
+                View(
+                    this,
+                    null,
+                    if (isMajor) R.attr.intervalTickMajorStyle else R.attr.intervalTickStyle
+                )
+            val tickLayoutParams =
+                FlexboxLayout.LayoutParams(sliderTickDiameter, sliderTickDiameter)
+
+            val line = View(
+                this,
+                null,
+                if (isMajor) R.attr.intervalLineMajorStyle else R.attr.intervalLineStyle
+            )
+            val lineLayoutParams = FlexboxLayout.LayoutParams(
+                sliderLineWidth,
+                if (isMajor) sliderMajorLineHeight else sliderLineHeight
+            )
+            if (isMajor) lineLayoutParams.setMargins(0, sliderTickDiameter / 2, 0, 0)
+
+            val marking = TextView(
+                this,
+                null,
+                if (isMajor) R.attr.intervalMarkingMajorStyle else R.attr.intervalMarkingStyle
+            )
+            val markingLayoutParams = FlexboxLayout.LayoutParams(
+                sliderMarkingWidth,
+                FlexboxLayout.LayoutParams.WRAP_CONTENT
+            )
+            if (!isMajor) markingLayoutParams.setMargins(0, -sliderTickDiameter, 0, 0)
+            marking.text = Utilities.formatDuration(key, false)
+
+            // viewBinding.flexboxLayoutIntervalTick.addView(view)
+            // The above will not work if width and height are not set again as below
+            viewBinding.flexboxLayoutIntervalTick.addView(tick, tickLayoutParams)
+            viewBinding.flexboxLayoutIntervalLine.addView(line, lineLayoutParams)
+            viewBinding.flexboxLayoutIntervalMarking.addView(marking, markingLayoutParams)
+        }
+
+        // Populate ticks for duration slider
+        for (count in 1..resources.getInteger(R.integer.numOfDurationGaps)) {
+            val tick = View(this, null, R.attr.intervalTickStyle)
+            val tickLayoutParams =
+                FlexboxLayout.LayoutParams(sliderTickDiameter, sliderTickDiameter)
+            viewBinding.flexboxLayoutDurationTick.addView(tick, tickLayoutParams)
+        }
+
+        viewBinding.buttonCapture.setOnClickListener { takePhoto() }
+
+        viewBinding.sliderInterval.addOnChangeListener { _, value, _ ->
+            val mappedInterval = Utilities.mapIntervalInSeconds(value)
+            viewBinding.textViewIntervalValue.text = Utilities.formatDuration(mappedInterval)
+
+            updateDurationSliderRange(mappedInterval)
+
+            val v = getSystemService(VIBRATOR_SERVICE) as Vibrator
+            v.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK))
+        }
+
+        viewBinding.sliderDuration.addOnChangeListener { _, value, _ ->
+            viewBinding.textViewDurationValue.text = getString(
+                R.string.duration_display_value,
+                Utilities.formatDuration(value.toInt()),
+                getNumOfShots().toString()
+            )
+
+            val v = getSystemService(VIBRATOR_SERVICE) as Vibrator
+            v.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK))
+        }
+    }
+
+    private fun updateDurationSliderRange(intervalInSeconds: Int) {
+        val newDurationValueTo =
+            (intervalInSeconds * resources.getInteger(R.integer.numOfShotsAsMaxDuration)).toFloat()
+        val newDurationStepSize =
+            newDurationValueTo / resources.getInteger(R.integer.numOfDurationGaps)
+
+        viewBinding.sliderDuration.stepSize = newDurationStepSize
+        viewBinding.sliderDuration.valueFrom = newDurationStepSize
+        viewBinding.sliderDuration.valueTo = newDurationValueTo
+        viewBinding.sliderDuration.value =
+            ((viewBinding.sliderDuration.value / newDurationStepSize).toInt() * newDurationStepSize).coerceIn(
+                newDurationStepSize,
+                newDurationValueTo
+            )
+
+        viewBinding.textViewDurationValue.text = getString(
+            R.string.duration_display_value,
+            Utilities.formatDuration(viewBinding.sliderDuration.value.toInt()),
+            getNumOfShots().toString()
+        )
     }
 
     override fun onResume() {
@@ -338,6 +468,12 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
             }
             .setCancelable(false)
 //            .show()
+    }
+
+    private fun getNumOfShots(): Int {
+        val intervalValue = Utilities.mapIntervalInSeconds(viewBinding.sliderInterval.value)
+        val durationValue = viewBinding.sliderDuration.value
+        return (durationValue / intervalValue).toInt()
     }
 
     override fun onPause() {

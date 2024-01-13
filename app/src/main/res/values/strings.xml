@@ -3,15 +3,34 @@
 
     <!-- Settings -->
     <string name="fps">(Intended) FPS</string>
-    <string name="fps_24">24</string>
-    <string name="fps_30">30</string>
-    <string name="fps_60">60</string>
-    <string name="fps_120">120</string>
+    <string name="fps_24">24 FPS</string>
+    <string name="fps_30">30 FPS</string>
+    <string name="fps_60">60 FPS</string>
+    <string name="fps_120">120 FPS</string>
     <string name="interval">Interval</string>
     <string name="duration">Duration</string>
-    <string name="string_display_value">%1$s</string>
+    <string name="duration_display_value">%1s ≡ %2s shots</string>
     <string name="count">Count</string>
+    <string name="presets">Presets</string>
     <string name="viewfinder">Viewfinder</string>
     <string name="shutter_sound">Shutter Sound</string>
     <string name="camera">Camera</string>
+
+    <!-- Interval -->
+    <string name="s_5">5s</string>
+    <string name="s_10">10s</string>
+    <string name="s_15">15s</string>
+    <string name="s_20">20s</string>
+    <string name="s_25">25s</string>
+    <string name="s_30">30s</string>
+    <string name="m_1">1m</string>
+    <string name="m_2">2m</string>
+    <string name="m_5">5m</string>
+    <string name="m_10">10m</string>
+    <string name="m_15">15m</string>
+    <string name="m_20">20m</string>
+    <string name="m_25">25m</string>
+    <string name="m_30">30m</string>
+    <string name="m_45">45m</string>
+    <string name="h_1">1h</string>
 </resources>

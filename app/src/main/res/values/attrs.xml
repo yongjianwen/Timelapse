@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <attr name="intervalTickStyle" format="reference"/>
+    <attr name="intervalTickMajorStyle" format="reference"/>
+    <attr name="intervalLineStyle" format="reference"/>
+    <attr name="intervalLineMajorStyle" format="reference"/>
+    <attr name="intervalMarkingStyle" format="reference"/>
+    <attr name="intervalMarkingMajorStyle" format="reference"/>
+</resources>

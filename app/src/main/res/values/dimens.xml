@@ -1,6 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <dimen name="mtrl_slider_track_side_padding">5dp</dimen>
-    <dimen name="mtrl_slider_tick_min_spacing">1dp</dimen>
-    <dimen name="mtrl_slider_widget_height">28dp</dimen>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Slider -->
+    <dimen name="mtrl_slider_track_side_padding" tools:ignore="PrivateResource">0dp</dimen>
+    <dimen name="mtrl_slider_widget_height" tools:ignore="PrivateResource">20dp</dimen>
+    <dimen name="slider_tick_diameter">4dp</dimen>
+    <dimen name="slider_line_width">1dp</dimen>
+    <dimen name="slider_line_height">10dp</dimen>
+    <dimen name="slider_major_line_height">12dp</dimen>
+    <dimen name="slider_marking_width">20dp</dimen>
+
+    <!-- Interval slider -->
+    <integer name="intervalStartInSeconds">5</integer>  <!-- also acts as stepSize -->
+
+    <!-- Duration slider -->
+    <integer name="numOfShotsAsMaxDuration">600</integer>
+    <integer name="numOfDurationGaps">20</integer>
 </resources>
