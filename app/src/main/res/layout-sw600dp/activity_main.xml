@@ -487,13 +487,15 @@
                 android:id="@+id/layout_camera_button_group"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:clipChildren="false"
                 app:layout_constraintBottom_toBottomOf="@id/text_view_camera"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="@id/text_view_camera">
 
-                <FrameLayout
+                <!--<FrameLayout
                     android:id="@+id/frame_layout_test"
                     android:layout_width="wrap_content"
+                    android:clipChildren="false"
                     android:layout_height="wrap_content">
 
                     <Button
@@ -502,7 +504,7 @@
                         android:layout_height="wrap_content"
                         android:text="Test" />
 
-                </FrameLayout>
+                </FrameLayout>-->
 
                 <!--<Button
                     android:layout_width="35dp"

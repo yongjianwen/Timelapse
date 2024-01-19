@@ -2,50 +2,62 @@ package xiong.jianwen.timelapse
 
 import android.annotation.SuppressLint
 import android.app.ActivityManager
-import android.content.ContentValues
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.ServiceConnection
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.os.Bundle
+import android.os.IBinder
 import android.os.VibrationEffect
 import android.os.Vibrator
-import android.provider.MediaStore
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewGroup.LayoutParams
 import android.view.ViewGroup.MarginLayoutParams
 import android.view.animation.AlphaAnimation
 import android.view.animation.Animation
 import android.view.animation.AnimationSet
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.ScaleAnimation
+import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.content.res.AppCompatResources
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
+import androidx.viewbinding.ViewBinding
+import androidx.window.core.layout.WindowSizeClass
+import androidx.window.layout.WindowMetricsCalculator
 import com.google.android.flexbox.FlexboxLayout
+import com.google.android.material.badge.BadgeDrawable
+import com.google.android.material.badge.BadgeUtils
+import com.google.android.material.badge.ExperimentalBadgeUtils
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.slider.Slider
+import io.reactivex.android.schedulers.AndroidSchedulers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import xiong.jianwen.timelapse.databinding.ActivityMainBinding
+import xiong.jianwen.timelapse.databinding.ActivityMainExpandedBinding
 import xiong.jianwen.timelapse.services.ForegroundService
 import xiong.jianwen.timelapse.utils.Constants
-import xiong.jianwen.timelapse.utils.Utilities
 import xiong.jianwen.timelapse.utils.UserPreferences
-import java.text.SimpleDateFormat
-import java.util.Date
+import xiong.jianwen.timelapse.utils.Utilities
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import kotlin.coroutines.CoroutineContext
@@ -74,12 +86,15 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
     // pause
     // watermark
     // AE/AF lock (and reminder)
+    // grid and levelling
+    // aspect ratio
 
     init {
         instance = this
     }
 
-    private lateinit var viewBinding: ActivityMainBinding
+     private lateinit var viewBinding: ActivityMainBinding
+//    private lateinit var viewBinding: ActivityMainExpandedBinding
     private lateinit var cameraExecutor: ExecutorService
     private var imageCapture: ImageCapture? = null
     private lateinit var cameraProvider: ProcessCameraProvider
@@ -99,6 +114,28 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
             }
         }
 
+    private lateinit var mService: ForegroundService
+    private var mIsBound = false
+    private val serviceConnection: ServiceConnection = object : ServiceConnection {
+        override fun onServiceConnected(className: ComponentName, iBinder: IBinder) {
+            Log.d(TAG, "ServiceConnection: connected to service.")
+            // We've bound to MyService, cast the IBinder and get MyBinder instance
+            val binder: ForegroundService.MyBinder = iBinder as ForegroundService.MyBinder
+            mService = binder.getService()
+            mIsBound = true
+            // Log.d(TAG, "From service: " + mService.getItem())
+            val test = mService.observeProgress().observeOn(AndroidSchedulers.mainThread()).subscribe { runCount ->
+                viewBinding.textViewProgress.text = runCount.toString()
+            }
+            mService.streamToMain(viewBinding.previewViewCamera.surfaceProvider)
+        }
+
+        override fun onServiceDisconnected(arg0: ComponentName) {
+            Log.d(TAG, "ServiceConnection: disconnected from service.")
+            mIsBound = false
+        }
+    }
+
     companion object {
         private const val TAG = "MainActivity"
         private val REQUIRED_PERMISSIONS =
@@ -110,9 +147,11 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
         }
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
+    @OptIn(ExperimentalBadgeUtils::class) override fun onCreate(savedInstanceState: Bundle?) {
+        Log.d(TAG, "onCreate")
         super.onCreate(savedInstanceState)
-        viewBinding = ActivityMainBinding.inflate(layoutInflater)
+        viewBinding = ActivityMainBinding.inflate(layoutInflater) as ActivityMainBinding
+//        computeWindowSizeClasses()
         setContentView(viewBinding.root)
 
         if (allPermissionsGranted()) {
@@ -125,18 +164,20 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
 
         cameraExecutor = Executors.newSingleThreadExecutor()
 
-        // Using foreground service to achieve repeating and timely triggers
-        if (!foregroundServiceRunning()) {
-            val serviceIntent = Intent(this, ForegroundService::class.java)
-            serviceIntent.putExtra("interval", 123)
-            // startForegroundService(serviceIntent)
-        }
-
         /* Compromises to be made if AlarmManager is to be used:
            1. App cannot be killed as repeating alarms cannot be set (e.g. using setAlarmClock())
            2. Only setAlarmClock() can be used to ensure timely deliveries
            3. Power Saving mode (in Settings > Battery) cannot be enabled as app will be killed
         */
+
+
+        viewBinding.buttonTest?.post{
+            val bd = BadgeDrawable.create(this)
+            bd.isVisible = true
+            bd.number = 1
+            BadgeUtils.attachBadgeDrawable(bd, viewBinding.buttonTest!!, viewBinding.frameLayoutTest)
+        }
+
 
         viewBinding.buttonSettings.setOnClickListener {
             // Height animation
@@ -213,7 +254,6 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
             }
         }
 
-
         /*viewBinding.seekBarInterval.setOnSeekBarChangeListener(object :
             SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(p0: SeekBar?, p1: Int, p2: Boolean) {
@@ -283,20 +323,16 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
 
         viewBinding.switchViewfinder.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
-                cameraProvider.bindToLifecycle(
-                    this,
-                    CameraSelector.DEFAULT_BACK_CAMERA,
-                    Preview.Builder().build()
-                        .also { it.setSurfaceProvider(viewBinding.previewViewCamera.surfaceProvider) },
-                    imageCapture
-                )
+//                cameraProvider.bindToLifecycle(
+//                    this,
+//                    CameraSelector.DEFAULT_BACK_CAMERA,
+//                    Preview.Builder().build()
+//                        .also { it.setSurfaceProvider(viewBinding.previewViewCamera.surfaceProvider) },
+//                    imageCapture
+//                )
             } else {
-                cameraProvider.unbindAll()
+//                cameraProvider.unbindAll()
             }
-        }
-
-        viewBinding.switchShutterSound.setOnCheckedChangeListener { _, isChecked ->
-            lifecycleScope.launch { userPreferences.saveIsMuted(!isChecked) }
         }
 
         viewBinding.sliderWidthControl.addOnChangeListener { _, value, _ ->
@@ -304,9 +340,61 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
             p.width = Utilities.dpToPx(value.toInt())
             viewBinding.cardViewSettings.requestLayout()
         }
+
+        // Replace with a known container that you can safely add a
+        // view to where the view won't affect the layout and the view
+        // won't be replaced.
+//        val container: ViewGroup = binding.container
+
+        // Add a utility view to the container to hook into
+        // View.onConfigurationChanged(). This is required for all
+        // activities, even those that don't handle configuration
+        // changes. You can't use Activity.onConfigurationChanged(),
+        // since there are situations where that won't be called when
+        // the configuration changes. View.onConfigurationChanged() is
+        // called in those scenarios.
+//        container.addView(object : View(this) {
+//            override fun onConfigurationChanged(newConfig: Configuration?) {
+//                super.onConfigurationChanged(newConfig)
+//                computeWindowSizeClasses()
+//            }
+//        })
+
+//        computeWindowSizeClasses()
+    }
+
+    private fun computeWindowSizeClasses() {
+        val metrics = WindowMetricsCalculator.getOrCreate().computeCurrentWindowMetrics(this)
+        val width = metrics.bounds.width()
+        val height = metrics.bounds.height()
+        val density = resources.displayMetrics.density
+        val windowSizeClass = WindowSizeClass.compute(width/density, height/density)
+        // COMPACT, MEDIUM, or EXPANDED
+        val widthWindowSizeClass = windowSizeClass.windowWidthSizeClass
+        // COMPACT, MEDIUM, or EXPANDED
+        val heightWindowSizeClass = windowSizeClass.windowHeightSizeClass
+
+        // Use widthWindowSizeClass and heightWindowSizeClass.
+        Log.d(TAG, widthWindowSizeClass.toString())
+        Log.d(TAG, heightWindowSizeClass.toString())
+        // MatePad 11" landscape - WindowWidthSizeClass: EXPANDED / WindowHeightSizeClass: MEDIUM
+        // MatePad 11" landscape (small window) - WindowWidthSizeClass: COMPACT / WindowHeightSizeClass: MEDIUM
+        // MatePad 11" portrait - WindowWidthSizeClass: MEDIUM / WindowHeightSizeClass: EXPANDED
+        // MatePad 11" portrait (small window) - WindowWidthSizeClass: COMPACT / WindowHeightSizeClass: MEDIUM
+
+        // Mate 40 Pro portrait - WindowWidthSizeClass: COMPACT / WindowHeightSizeClass: MEDIUM
+        // Mate 40 Pro portrait (small window) - WindowWidthSizeClass: COMPACT / WindowHeightSizeClass: MEDIUM
+        // Mate 40 Pro landscape - WindowWidthSizeClass: MEDIUM / WindowHeightSizeClass: COMPACT
+        // Mate 40 Pro landscape (small window) - WindowWidthSizeClass: COMPACT / WindowHeightSizeClass: MEDIUM
+
+//        if (widthWindowSizeClass) {
+//            viewBinding = ActivityMainExpandedBinding.inflate(layoutInflater)
+//        }
     }
 
     private fun initViews() {
+        viewBinding.buttonCapture.isEnabled = !foregroundServiceRunning()
+
         val sliderTickDiameter = resources.getDimension(R.dimen.slider_tick_diameter).toInt()
         val sliderLineWidth = resources.getDimension(R.dimen.slider_line_width).toInt()
         val sliderLineHeight = resources.getDimension(R.dimen.slider_line_height).toInt()
@@ -413,11 +501,24 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
             viewBinding.textViewDurationValue.text = getString(
                 R.string.duration_display_value,
                 Utilities.formatDuration(value.toInt()),
-                getNumOfShots().toString()
+                getNumOfShots()
             )
 
             val v = getSystemService(VIBRATOR_SERVICE) as Vibrator
             v.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK))
+        }
+
+        viewBinding.switchShutterSound.setOnCheckedChangeListener { _, isChecked ->
+            // The following will mute the entire system
+            /*val am = getSystemService(AUDIO_SERVICE) as AudioManager
+            am.adjustStreamVolume(
+                AudioManager.STREAM_MUSIC,
+                if (isChecked) AudioManager.ADJUST_UNMUTE else AudioManager.ADJUST_MUTE,
+                0
+            )*/
+//            Utilities.playSound()
+            if (isChecked) Utilities.unMute() else Utilities.mute()
+            lifecycleScope.launch { userPreferences.saveIsMuted(!isChecked) }
         }
     }
 
@@ -439,7 +540,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
         viewBinding.textViewDurationValue.text = getString(
             R.string.duration_display_value,
             Utilities.formatDuration(viewBinding.sliderDuration.value.toInt()),
-            getNumOfShots().toString()
+            getNumOfShots()
         )
     }
 
@@ -547,13 +648,14 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
         cameraExecutor.shutdown()
     }
 
-    private fun startCamera() {
+    @OptIn(ExperimentalBadgeUtils::class) private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
 
         cameraProviderFuture.addListener({
             // Used to bind the lifecycle of cameras to the lifecycle owner
             // val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
             cameraProvider = cameraProviderFuture.get()
+            Log.d(TAG, "cameraProvider initialized")
 
             // Preview
             val preview = Preview.Builder().build()
@@ -568,6 +670,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
             // 1: CameraSelector.LENS_FACING_BACK
             // 2: CameraSelector.LENS_FACING_EXTERNAL
             var arr = listOf<Int>()
+            var cameraNum = 1
             for (cameraInfo in cameraProvider.availableCameraInfos) {
                 var cameraName: String = when (cameraInfo.lensFacing) {
                     CameraSelector.LENS_FACING_FRONT -> "Front"
@@ -576,7 +679,8 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
                 }
                 Log.d(TAG, cameraInfo.lensFacing.toString() + ": " + cameraName)
                 // Must use MaterialButton (it seems that using Button will not work)
-                val newButton = MaterialButton(
+                // Toggle group button
+                /*val newButton = MaterialButton(
                     viewBinding.buttonToggleGroupCamera.context,
                     null,
                     com.google.android.material.R.attr.materialButtonOutlinedStyle
@@ -586,26 +690,55 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
                 newButton.text = cameraName
                 newButton.minHeight = 0
                 newButton.minWidth = 0
-                // viewBinding.buttonToggleGroupCamera.addView(newButton)
-                /*viewBinding.buttonToggleGroupCamera.post {
-                    viewBinding.buttonToggleGroupCamera.addView(
-                        newButton, ViewGroup.LayoutParams(
-                            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
-                        )
-                    )
-                    viewBinding.buttonToggleGroupCamera.invalidate()
-                }*/
                 viewBinding.buttonToggleGroupCamera.addView(
                     newButton, ViewGroup.LayoutParams(
                         ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
                     )
                 )
-//                viewBinding.buttonToggleGroupCamera.invalidate()
-                // Log.d(TAG, "new button added: " + viewBinding.buttonToggleGroupCamera.childCount)
+                newButton.setOnClickListener { view ->
+                    val selectedCamera = arr.indexOf(view.id)
+                    Toast.makeText(this, selectedCamera.toString(), Toast.LENGTH_SHORT).show()
+                }*/
+
+                val newFrameLayout = FrameLayout(viewBinding.layoutCameraButtonGroup.context)
+                newFrameLayout.clipChildren = false
+                val f1 = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+//                viewBinding.layoutCameraButtonGroup.addView(newFrameLayout, f1)
+
+                val newButton = Button(viewBinding.layoutCameraButtonGroup.context)
+                newButton.id = View.generateViewId()
+                arr = arr.plus(newButton.id)
+                newButton.text = arr.size.toString()
+                newButton.background = AppCompatResources.getDrawable(this, R.drawable.rounded2)
+                newButton.setTextColor(getColor(R.color.black))
+                val p = MarginLayoutParams(Utilities.dpToPx(35), Utilities.dpToPx(35))
+                p.setMargins(0, 0, Utilities.dpToPx(10), 0)
+                newFrameLayout.addView(newButton, p)
+                viewBinding.layoutCameraButtonGroup.addView(newFrameLayout, f1)
+
+//                val bd = BadgeDrawable.create(this)
+//                bd.isVisible = true
+//                bd.number = 1
+//                BadgeUtils.attachBadgeDrawable(bd, newButton)
+                newButton.post{
+                    val bd = BadgeDrawable.create(this)
+                    bd.isVisible = true
+                    bd.text = cameraName[0].toString()
+                    BadgeUtils.attachBadgeDrawable(bd, newButton, newFrameLayout)
+                }
 
                 newButton.setOnClickListener { view ->
                     val selectedCamera = arr.indexOf(view.id)
                     Toast.makeText(this, selectedCamera.toString(), Toast.LENGTH_SHORT).show()
+
+                    cameraProvider.unbindAll()
+
+                    cameraProvider.bindToLifecycle(
+                        this,
+                        cameraInfo.cameraSelector,
+                        preview,
+                        imageCapture
+                    )
                 }
             }
             viewBinding.buttonToggleGroupCamera.check(arr.first())
@@ -638,10 +771,20 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
         // Using foreground service to achieve repeating and timely triggers
         if (!foregroundServiceRunning()) {
             val serviceIntent = Intent(this, ForegroundService::class.java)
-            // serviceIntent.putExtra("interval", 5)
+            serviceIntent.putExtra(
+                Constants.INTERVAL,
+                Utilities.mapIntervalInSeconds(viewBinding.sliderInterval.value)
+            )
+            serviceIntent.putExtra(Constants.DURATION, viewBinding.sliderDuration.value.toInt())
+            Log.d(TAG, viewBinding.sliderDuration.value.toString())
             startForegroundService(serviceIntent)
+
+            bindService(serviceIntent, serviceConnection, BIND_AUTO_CREATE)
         }
 
+        viewBinding.buttonCapture.isEnabled = false
+
+        /*
         // Get a stable reference of the modifiable image capture use case
         // This will be null if photo button is clicked before image capture is set up
         val imageCapture = imageCapture ?: return
@@ -679,12 +822,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
                     Log.e(TAG, "Photo capture failed: ${exception.message}", exception)
                 }
             })
-    }
-
-    fun showToast(toast: String?) {
-        runOnUiThread {
-            Toast.makeText(applicationContext(), toast, Toast.LENGTH_SHORT).show()
-        }
+         */
     }
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {

@@ -1,5 +1,6 @@
 package xiong.jianwen.timelapse.utils
 
+import android.media.MediaPlayer
 import android.util.TypedValue
 import xiong.jianwen.timelapse.MainActivity
 import xiong.jianwen.timelapse.R
@@ -8,6 +9,8 @@ import kotlin.math.roundToInt
 class Utilities {
 
     companion object {
+        private val mp = MediaPlayer.create(MainActivity.applicationContext(), R.raw.camera)
+
         fun mapIntervalInSeconds(sliderValue: Float): Int {
             val context = MainActivity.applicationContext()
             val intervals = Constants.INTERVAL_MAP.keys
@@ -58,6 +61,20 @@ class Utilities {
             return TypedValue.applyDimension(
                 TypedValue.COMPLEX_UNIT_DIP, dp.toFloat(), context.resources.displayMetrics
             ).toInt()
+        }
+
+        fun playSound() {
+            mp.start()
+        }
+
+        fun mute() {
+            mp.stop()
+            mp.setVolume(0f, 0f)
+        }
+
+        fun unMute() {
+            mp.reset()
+            mp.setVolume(1f, 1f)
         }
     }
 }

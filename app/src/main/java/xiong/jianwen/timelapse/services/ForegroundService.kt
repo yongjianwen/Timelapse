@@ -4,33 +4,38 @@ import android.annotation.SuppressLint
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
-import android.media.MediaPlayer
-import android.os.Handler
-import android.os.Looper
+import android.os.Binder
+import android.os.IBinder
 import android.os.PowerManager
 import android.provider.MediaStore
 import android.widget.Toast
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleService
+import androidx.lifecycle.Observer
 import androidx.lifecycle.lifecycleScope
+import io.reactivex.Observable
+import io.reactivex.ObservableEmitter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import xiong.jianwen.timelapse.R
-import xiong.jianwen.timelapse.utils.UserPreferences
 import xiong.jianwen.timelapse.databinding.ActivityMainBinding
 import xiong.jianwen.timelapse.utils.Constants
+import xiong.jianwen.timelapse.utils.UserPreferences
+import xiong.jianwen.timelapse.utils.Utilities
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 import kotlin.coroutines.CoroutineContext
 import kotlin.math.roundToInt
-
 
 class ForegroundService : LifecycleService(), CoroutineScope {
 
@@ -41,20 +46,43 @@ class ForegroundService : LifecycleService(), CoroutineScope {
 
     private lateinit var wakeLock: PowerManager.WakeLock
 
+    private lateinit var t: Thread
+
+    var runCount = 0
+    var expectedCount = 0
+
     companion object {
         private const val TAG = "ForegroundService"
     }
 
     @SuppressLint("NotificationPermission")
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // val interval = intent!!.getIntExtra("interval", 5)
-        // Toast.makeText(applicationContext, interval.toString(), Toast.LENGTH_SHORT).show()
+        super.onStartCommand(intent, flags, startId)
+        if (intent == null) {
+            Toast.makeText(applicationContext, "Timelapse: No intent passed!", Toast.LENGTH_LONG)
+                .show()
+            stopSelf(startId)
+            return START_NOT_STICKY
+        }
+
+        // Acquire partial wake lock
+        wakeLock = (getSystemService(Context.POWER_SERVICE) as PowerManager).run {
+            newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Timelapse::MyWakelockTag").apply {
+                acquire(Constants.WAKE_LOCK_TIMEOUT)
+            }
+        }
+
+        val intervalInSeconds = intent.getIntExtra(Constants.INTERVAL, -1)
+        val durationInSeconds = intent.getIntExtra(Constants.DURATION, -1)
+        /*Toast.makeText(
+            applicationContext,
+            "interval: $intervalInput, duration: $durationInput",
+            Toast.LENGTH_SHORT
+        ).show()*/
 
         val userPreferences = UserPreferences(this)
-        var interval = 0
-        var duration = 0
         var isMuted = true
-        lifecycleScope.launch {
+        /*lifecycleScope.launch {
             userPreferences.intervalFlow.collect {
                 interval = it
             }
@@ -63,63 +91,70 @@ class ForegroundService : LifecycleService(), CoroutineScope {
             userPreferences.durationFlow.collect {
                 duration = it
             }
-        }
+        }*/
         lifecycleScope.launch {
             userPreferences.isMutedFlow.collect {
                 isMuted = it
             }
         }
-//        Toast.makeText(applicationContext, "$age, $myName", Toast.LENGTH_LONG).show()
 
-        /*// viewBinding = ActivityMainBinding.inflate(layoutInflater)
-        cameraExecutor = Executors.newSingleThreadExecutor()*/
-        wakeLock = (getSystemService(Context.POWER_SERVICE) as PowerManager).run {
-            newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MyApp::MyWakelockTag").apply {
-                acquire(Constants.WAKE_LOCK_TIMEOUT)
-            }
-        }
+        // viewBinding = ActivityMainBinding.inflate(layoutInflater)
+        cameraExecutor = Executors.newSingleThreadExecutor()
 
-        val intervalInSeconds = 5    // 5L
         val startTime = System.currentTimeMillis()
-        var runCount = 0
+        // var runCount = 0
 
-        val title = "Capturing Timelapse"
-        var msg = "Starting to capture"
-        val builder = NotificationService.buildTestNotification(this, title, msg, msg)
+        val notiTitle = resources.getString(R.string.noti_title)
+        val builder = NotificationService.buildTestNoti(
+            this,
+            notiTitle,
+            resources.getString(R.string.noti_short_msg_init),
+            resources.getString(R.string.noti_short_msg_init)
+        )
 
         startForeground(1001, builder.build())
 
-        Thread {
+        t = Thread {
             try {
                 while (true) {
-                    Handler(Looper.getMainLooper()).post {
+                    // Need to call Looper.getMainLooper() to Toast
+                    /*Handler(Looper.getMainLooper()).post {
                         Toast.makeText(
                             applicationContext,
                             "interval: $interval, duration: $duration, is muted: $isMuted",
                             Toast.LENGTH_SHORT
                         ).show()
-                    }
+                    }*/
 
                     ++runCount
                     val nowTime = System.currentTimeMillis()
-                    val expectedCount = ((nowTime - startTime) / 5000).toInt() + 1
+                    // val expectedCount = ((nowTime - startTime) / 5000).toInt() + 1
+                    expectedCount = ((nowTime - startTime) / 5000).toInt() + 1
                     val successRate =
                         (runCount * 100.0 / expectedCount * 100.0).roundToInt() / 100.0
                     val successRateStr = String.format("%.2f", successRate)
                     val missingCount = expectedCount - runCount
 
-                    val shortMsg =
-                        "Capturing $runCount/$expectedCount - $successRateStr% (missing $missingCount)"
-                    msg = "$shortMsg\nStarted from $startTime"
-                    NotificationService.triggerTestNotification(builder, this, title, shortMsg, msg)
-
-                    if (!Constants.NO_CAMERA) {
-                        startCamera()
+                    if (this::progressObserver.isInitialized) {
+                        progressObserver.onNext(runCount.toFloat())
                     }
 
+                    val shortMsg = resources.getString(
+                        R.string.noti_short_msg,
+                        runCount,
+                        expectedCount,
+                        successRateStr,
+                        missingCount
+                    )
+                    val msg = resources.getString(R.string.noti_long_msg, shortMsg, startTime)
+                    NotificationService.triggerNoti(builder, this, notiTitle, shortMsg, msg)
+
+//                    if (!Constants.NO_CAMERA) {
+                    // startCamera()
+//                    }
+
                     if (!isMuted) {
-                        val mediaPlayer = MediaPlayer.create(this, R.raw.camera)
-                        mediaPlayer.start()
+                        Utilities.playSound()
                     }
 
                     // Test delivery methods: Queued delivery vs Timed delivery
@@ -144,39 +179,74 @@ class ForegroundService : LifecycleService(), CoroutineScope {
                         }
                     }
                     Thread.sleep(nextTrigger - System.currentTimeMillis())
+
+                    if (System.currentTimeMillis() - startTime > durationInSeconds * 1000) {
+                        val a = NotificationService.buildCompletedNoti(
+                            applicationContext,
+                            "Ended!",
+                            "Service completed",
+                            "Service completed"
+                        )
+                        a.build()
+                        NotificationService.triggerNoti(
+                            a,
+                            this,
+                            "Ended!",
+                            "Service completed",
+                            "Service completed"
+                        )
+                        throw InterruptedException()
+                    }
                 }
             } catch (e: InterruptedException) {
+//                test()
+                stopForeground(STOP_FOREGROUND_DETACH)
+                stopSelf()
                 e.printStackTrace()
             }
-        }.start()
+        }
 
-        return super.onStartCommand(intent, flags, startId)
+        t.start()
+
+        return START_NOT_STICKY
+    }
+
+    fun test() {
+        // java.lang.NullPointerException: Can't toast on a thread that has not called Looper.prepare()
+        /*Toast.makeText(
+            applicationContext,
+            "Ended!",
+            Toast.LENGTH_SHORT
+        ).show()*/
+
+        val a = NotificationService.buildCompletedNoti(
+            applicationContext,
+            "Ended!",
+            "Service completed",
+            "Service completed"
+        )
+        a.build()
+        NotificationService.triggerNoti(a, this, "Ended!", "Service completed", "Service completed")
     }
 
     override fun onDestroy() {
-        // Original
-        stopForeground(STOP_FOREGROUND_REMOVE)
-        stopSelf()
-
-        wakeLock.release()
-
-        // Test restart service
-        /*val serviceIntent = Intent(this.applicationContext, ForegroundService::class.java)
-        startForegroundService(serviceIntent)*/
-
         super.onDestroy()
+        stopSelf()
+        wakeLock.release()
     }
 
     private lateinit var viewBinding: ActivityMainBinding
     private lateinit var cameraExecutor: ExecutorService
     private var imageCapture: ImageCapture? = null
+    private lateinit var cameraProvider: ProcessCameraProvider
 
     private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
 
         cameraProviderFuture.addListener({
             // Used to bind the lifecycle of cameras to the lifecycle owner
-            val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
+            // val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
+            cameraProvider = cameraProviderFuture.get()
 
             // Preview
 //            val preview = Preview.Builder().build()
@@ -233,13 +303,54 @@ class ForegroundService : LifecycleService(), CoroutineScope {
                     val msg = "Photo capture succeeded: ${outputFileResults.savedUri}"
                     Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
 //                    Log.d(MainActivity.TAG, msg)
-                    cameraExecutor.shutdown()
+                    cameraProvider.unbindAll()
                 }
 
                 override fun onError(exception: ImageCaptureException) {
 //                    Log.e(MainActivity.TAG, "Photo capture failed: ${exception.message}", exception)
-                    cameraExecutor.shutdown()
+                    cameraProvider.unbindAll()
                 }
             })
+    }
+
+    private val mBinder: IBinder = MyBinder()
+    private lateinit var progressObserver: ObservableEmitter<Float>
+    private lateinit var observableProgress: Observable<Float>
+
+    inner class MyBinder : Binder() {
+        fun getService(): ForegroundService {
+            return this@ForegroundService
+        }
+    }
+
+    override fun onBind(intent: Intent): IBinder {
+        super.onBind(intent)
+        return mBinder
+    }
+
+    fun streamToMain(view: Preview.SurfaceProvider) {
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+
+        cameraProviderFuture.addListener({
+            cameraProvider = cameraProviderFuture.get()
+            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+            val preview = Preview.Builder().build().also { it.setSurfaceProvider(view) }
+            imageCapture = ImageCapture.Builder().build()
+
+            try {
+                cameraProvider.unbindAll()
+                cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }, ContextCompat.getMainExecutor(this))
+    }
+
+    fun observeProgress(): Observable<Float> {
+        if (!this::observableProgress.isInitialized) {
+            observableProgress = Observable.create { emitter -> progressObserver = emitter }
+            observableProgress = observableProgress.share()
+        }
+        return observableProgress
     }
 }
